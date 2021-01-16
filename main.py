@@ -1,12 +1,20 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
 from matplotlib import pyplot
+from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import r2_score
+
 
 from bs4 import BeautifulSoup
 import re
 import requests
+# from yahoo_finance import Share
 
 betweenTagsRegEx = '(?<=>)(.*\n?)(?=<)'
+shortScore = 50
+longScore = 50
+comments = []
 
 def livePrice(companyCode):
 
@@ -37,6 +45,12 @@ def getName(companyCode):
 
 def buildLivePriceLink(companyCode):
     return "https://finance.yahoo.com/quote/"+ companyCode + "?p="+ companyCode + "&.tsrc=fin-srch"
+
+def buildFinDataLink(companyCode):
+    return "https://finance.yahoo.com/quote/" + companyCode + "/key-statistics?p=" + companyCode
+
+def buildCashFlowsLink(companyCode):
+    return "https://finance.yahoo.com/quote/"+ companyCode + "/cash-flow?p="+ companyCode
 
 def getFinData(companyCode):
     
@@ -119,6 +133,8 @@ def getFinData(companyCode):
             data = float(data[0:-1]) * 1000000000
         elif data[-1] == '%':
             data = float(data[0:-1]) / 100.0
+        elif "N/A" in data:
+            data = ''
         else:
             data = float(data)
 
@@ -128,9 +144,37 @@ def getFinData(companyCode):
 
     return finDataDict
 
+def getCashFlows(companyCode):
 
-def buildFinDataLink(companyCode):
-    return "https://finance.yahoo.com/quote/" + companyCode + "/key-statistics?p=" + companyCode
+    url = buildCashFlowsLink(companyCode)
+    response = requests.get(url)    
+    soup = BeautifulSoup(response.text, "lxml")
+
+    try:
+        # price = soup.find("div",{"class": "My(6px) Pos(r) smartphone_Mt(6px)"}).find("span").text
+        fcfsRaw = soup.find_all("span")[-21:-16]
+        freeCashFlows = []
+
+        for fcf in fcfsRaw:
+            fcfstring = re.search(betweenTagsRegEx, str(fcf)).group(0)
+            choppedString = fcfstring.replace(",", "")
+            if (choppedString!="Free Cash Flow"):
+                freeCashFlows.append(choppedString)
+        
+    except:
+        freeCashFlows = "FCFs unavailable."
+
+    return freeCashFlows
+
+def evalCashFlows(freeCashFlows):
+    print(freeCashFlows)
+    xtrain = np.array([range(1,len(freeCashFlows)+1)], dtype=float).reshape(-1,1)
+    ytrain = np.array(freeCashFlows,dtype=float)
+    model = LinearRegression().fit(xtrain, ytrain)
+    score = model.score(xtrain, ytrain)
+    print("r:" + str(score))
+    slope = -1 * model.coef_[0]
+    print("slope: " + str(slope))
 
 def evalPeRatios(finData, industry):
     df = pd.DataFrame(pd.read_csv("pedata.csv", index_col="Industry  Name"))
@@ -145,21 +189,32 @@ def evalPeRatios(finData, industry):
 
             industryBad = True
         except:
-            print("The industry " + industry + "is not on this list. Please select one from the table.")
+            print("The industry " + industry + " is not on this list. Please select one from the table.")
             industry = input()
 
     if (finData['trailingPE'] < finData['forwardPE']):
         #company is expected to grow
-        true = True
+        longScore += 10
+        shortScore +=5
     else:
         #company's earnings are expected to decrease
-        true = True
+        longScore -= 10
+        shortScore -=5
+
+
+    if (finData['trailingPE'] < indTrailPE):
+        #company is undervalued & has room to grow - good long term investment
+        longScore += 10
+        shortScore +=8
+    else:
+        #company may be overvalued - potential sell 
+        tlongScore -= 5
+        shortScore -= 6
 
 
     if (finData['trailingPE'] < indTrailPE):
         #company is undervalued - good long term investment
         true = True
-
     else:
         #company may be overvalued - potential sell 
         true = True
@@ -167,7 +222,6 @@ def evalPeRatios(finData, industry):
     if (finData['PEGratio'] < 1):
         #company's future is undervalued - good long term investment
         true = True
-
     elif (finData['PEGratio'] > 1):
         #company's future may be overvalued - potential sell 
         true = True
@@ -199,10 +253,16 @@ def evalPeRatios(finData, industry):
     
 
 
-print("Enter company's stock market code:")
-companyCode = str(input())
-print("The current price of " + str(getName(companyCode)) + " is: "+str(livePrice(companyCode)))
+print()
+companyCode = input("Enter company's stock market code:")
+print("The current price of " + str(getName(companyCode)) + " is: $"+str(livePrice(companyCode))+" per share.")
+# print("yfin price: " + str(Share(companyCode).get_price()))
+
 finData = getFinData(companyCode)
-print("Enter company's industry from http://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/pedata.html:")
-industry = str(input())
-evalPeRatios(finData, industry)
+#print("Enter company's industry from http://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/pedata.html")
+#industry = str(input())
+#evalPeRatios(finData, industry)
+freeCashFlows = getCashFlows(companyCode)
+evalCashFlows(freeCashFlows)
+print("Short term investment score: " + str(shortScore))
+print("Long term investment score: " + str(longScore))
