@@ -5,7 +5,6 @@ from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import r2_score
 
-
 from bs4 import BeautifulSoup
 import re
 import requests
@@ -177,20 +176,22 @@ def evalCashFlows(freeCashFlows):
     print("slope: " + str(slope))
 
 def evalPeRatios(finData, industry):
-    df = pd.DataFrame(pd.read_csv("pedata.csv", index_col="Industry  Name"))
+    df = pd.read_html("http://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/pedata.html", header = 0, index_col="Industry Name")[0]
 
-    industryBad = False
+    industryGood = False
 
-    while (industryBad == False):
+    while (industryGood == False):
         try: 
-            indTrailPE = df.loc[industry, "Trailing PE"]
-            indForwardPE = df.loc[industry, 'Forward PE']
-            indPEG = df.loc[industry, 'PEG Ratio']
+            indTrailPE = df.loc[industry, "Trailing  PE"]
+            indForwardPE = df.loc[industry, 'Forward  PE']
+            indPEG = df.loc[industry, 'PEG  Ratio']
+            industryGood = True
 
-            industryBad = True
         except:
-            print("The industry " + industry + " is not on this list. Please select one from the table.")
-            industry = input()
+            industry = input("The industry " + industry + " is not on this list. Please select one from the table:")
+
+    global longScore
+    global shortScore
 
     if (finData['trailingPE'] < finData['forwardPE']):
         #company is expected to grow
@@ -208,31 +209,29 @@ def evalPeRatios(finData, industry):
         shortScore +=8
     else:
         #company may be overvalued - potential sell 
-        tlongScore -= 5
+        longScore -= 5
         shortScore -= 6
 
 
-    if (finData['trailingPE'] < indTrailPE):
-        #company is undervalued - good long term investment
-        true = True
-    else:
-        #company may be overvalued - potential sell 
-        true = True
-
     if (finData['PEGratio'] < 1):
         #company's future is undervalued - good long term investment
-        true = True
+        longScore += 12
+        shortScore +=8
+
     elif (finData['PEGratio'] > 1):
         #company's future may be overvalued - potential sell 
-        true = True
+        longScore -= 7
+        shortScore -= 2
 
     if (finData['PEGratio'] < indPEG):
         #company expected to fall behind competition - poor long term investment
-        true = True
+        longScore -= 10
+        shortScore -=12
 
     else:
         #company expected to keep pace with or exceed competition - good long term investment 
-        true = True
+        longScore += 10
+        shortScore += 11
 
     if (finData['priceBookRatio'] < 1):
         #stock price below book value - undervalued - good long term investment
@@ -252,16 +251,13 @@ def evalPeRatios(finData, industry):
 
     
 
-
-print()
-companyCode = input("Enter company's stock market code:")
+companyCode = input("Enter company's stock market code: ")
 print("The current price of " + str(getName(companyCode)) + " is: $"+str(livePrice(companyCode))+" per share.")
 # print("yfin price: " + str(Share(companyCode).get_price()))
 
 finData = getFinData(companyCode)
-#print("Enter company's industry from http://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/pedata.html")
-#industry = str(input())
-#evalPeRatios(finData, industry)
+industry = str(input("Enter company's industry from http://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/pedata.html : "))
+evalPeRatios(finData, industry)
 freeCashFlows = getCashFlows(companyCode)
 evalCashFlows(freeCashFlows)
 print("Short term investment score: " + str(shortScore))
