@@ -14,6 +14,7 @@ betweenTagsRegEx = '(?<=>)(.*\n?)(?=<)'
 shortScore = 50
 longScore = 50
 comments = []
+sector_data_link = "https://eresearch.fidelity.com/eresearch/markets_sectors/sectors/sectors_in_market.jhtml?tab=learn&sector=10"
 
 def livePrice(companyCode):
 
