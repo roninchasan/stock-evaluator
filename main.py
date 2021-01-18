@@ -52,6 +52,15 @@ def buildFinDataLink(companyCode):
 def buildCashFlowsLink(companyCode):
     return "https://finance.yahoo.com/quote/"+ companyCode + "/cash-flow?p="+ companyCode
 
+def buildGetSectorLinkMiddleman(companyCode):
+    return "https://www.barchart.com/stocks/sectors/rankings?symbol=" + companyCode
+
+# def getSectorDataLink():
+#     url = buildGetSectorLinkMiddleman(companyCode)
+#     response = requests.get(url)
+#     soup = BeautifulSoup(response.text, "lxml")
+#     sectors_list = soup.findAll("div", {"class": "sectors-list"})
+
 def getFinData(companyCode):
     
     response = requests.get(buildFinDataLink(companyCode))
