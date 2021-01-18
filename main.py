@@ -235,6 +235,7 @@ def evalPeRatios(finData, industry):
         longScore -= 7
         shortScore -= 2
 
+
     if ((finData['PEGratio'] !='')and (finData['PEGratio'] < indPEG) ):
         #company expected to fall behind competition - poor long term investment
         longScore -= 10
@@ -244,6 +245,7 @@ def evalPeRatios(finData, industry):
         #company expected to keep pace with or exceed competition - good long term investment 
         longScore += 10
         shortScore += 11
+
 
     if ((finData['priceBookRatio'] !='') and (finData['priceBookRatio'] < 1)):
         #stock price below book value - undervalued - good long term investment
@@ -265,12 +267,13 @@ def evalPeRatios(finData, industry):
     elif (finData['priceBookRatio'] !=''):
         #stock price is inflated/overvalued - not great long term investment 
         longScore -= .5*finData['priceBookRatio']
-        shortScore -= .3*finData['priceBookRatio']
-    
+        shortScore -= .3*finData['priceBookRatio']    
+
 
 companyCode = input("Enter company's stock market code: ")
 print("The current price of " + str(getName(companyCode)) + " is: $"+str(livePrice(companyCode))+" per share.")
 # print("yfin price: " + str(Share(companyCode).get_price()))
+
 
 finData = getFinData(companyCode)
 industry = str(input("Enter company's industry from http://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/pedata.html : "))
