@@ -193,7 +193,9 @@ def evalPeRatios(finData, industry):
     global longScore
     global shortScore
 
-    if (finData['trailingPE'] < finData['forwardPE']):
+    print(finData)
+
+    if ((finData['trailingPE'] !='' and finData['forwardPE'] !='') and (finData['trailingPE'] < finData['forwardPE'])):
         #company is expected to grow
         longScore += 10
         shortScore +=5
@@ -203,7 +205,7 @@ def evalPeRatios(finData, industry):
         shortScore -=5
 
 
-    if (finData['trailingPE'] < indTrailPE):
+    if (finData['trailingPE'] !='')and ((finData['trailingPE'] < indTrailPE) ):
         #company is undervalued & has room to grow - good long term investment
         longScore += 10
         shortScore +=8
@@ -213,17 +215,17 @@ def evalPeRatios(finData, industry):
         shortScore -= 6
 
 
-    if (finData['PEGratio'] < 1):
+    if ((finData['PEGratio'] !='') and (finData['PEGratio'] < 1)):
         #company's future is undervalued - good long term investment
         longScore += 12
         shortScore +=8
 
-    elif (finData['PEGratio'] > 1):
+    elif ((finData['PEGratio'] !='') and (finData['PEGratio'] > 1)):
         #company's future may be overvalued - potential sell 
         longScore -= 7
         shortScore -= 2
 
-    if (finData['PEGratio'] < indPEG):
+    if ((finData['PEGratio'] !='')and (finData['PEGratio'] < indPEG) ):
         #company expected to fall behind competition - poor long term investment
         longScore -= 10
         shortScore -=12
@@ -233,9 +235,10 @@ def evalPeRatios(finData, industry):
         longScore += 10
         shortScore += 11
 
-    if (finData['priceBookRatio'] < 1):
+    if ((finData['priceBookRatio'] !='') and (finData['priceBookRatio'] < 1)):
         #stock price below book value - undervalued - good long term investment
-        true = True
+        longScore += 8/finData['priceBookRatio']
+        shortScore += 6/finData['priceBookRatio']
 
         if (finData['priceBookRatio'] < .6):
             #stock price far below book value - very undervalued - great long term investment
@@ -249,6 +252,10 @@ def evalPeRatios(finData, industry):
             #stock price slightly below book value - slightly undervalued - ok long term investment
             true = True
 
+    elif (finData['priceBookRatio'] !=''):
+        #stock price is inflated/overvalued - not great long term investment 
+        longScore -= .5*finData['priceBookRatio']
+        shortScore -= .3*finData['priceBookRatio']
     
 
 companyCode = input("Enter company's stock market code: ")
