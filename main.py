@@ -108,12 +108,14 @@ def getSectorData(companyCode):
     total_alpha = 0.0
     
     for obj in data['data']:
+        # print(obj)
+        # print('----------')
         alpha = obj['weightedAlpha'].split("+")[1]
         total_alpha = total_alpha + float(alpha)
 
     sector_alpha = total_alpha / data_count
 
-    sector_data = {"data" : {"sector-alpha" : sector_alpha}}
+    sector_data = {"data" : {"sector-alpha" : sector_alpha, "sector-name" : company_sector_description}}
 
     return sector_data
 
