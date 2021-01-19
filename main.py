@@ -270,6 +270,20 @@ def evalPeRatios(finData, industry):
         shortScore -= .3*finData['priceBookRatio']    
 
 
+def getHistoricalData(companyCode):
+    url = "https://alpha-vantage.p.rapidapi.com/query"
+
+    querystring = {"function":"TIME_SERIES_WEEKLY","symbol":companyCode,"datatype":"csv"}
+
+    headers = {
+        'x-rapidapi-key': "5a71a248c1mshec5ac249ab63653p1e7a54jsnf4f122a5edee",
+        'x-rapidapi-host': "alpha-vantage.p.rapidapi.com"
+        }
+
+    response = requests.request("GET", url, headers=headers, params=querystring)
+
+    return response
+
 companyCode = input("Enter company's stock market code: ")
 print("The current price of " + str(getName(companyCode)) + " is: $"+str(livePrice(companyCode))+" per share.")
 # print("yfin price: " + str(Share(companyCode).get_price()))
@@ -280,5 +294,10 @@ industry = str(input("Enter company's industry from http://pages.stern.nyu.edu/~
 evalPeRatios(finData, industry)
 freeCashFlows = getCashFlows(companyCode)
 evalCashFlows(freeCashFlows)
+historicalData = getHistoricalData(companyCode)
+
+
+
+
 print("Short term investment score: " + str(shortScore))
 print("Long term investment score: " + str(longScore))
