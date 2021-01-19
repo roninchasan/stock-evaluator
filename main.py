@@ -113,7 +113,7 @@ def getSectorData(companyCode):
 
     sector_alpha = total_alpha / data_count
 
-    sector_data = {"sector-alpha" : sector_alpha}
+    sector_data = {"data" : {"sector-alpha" : sector_alpha}}
 
     return sector_data
 
