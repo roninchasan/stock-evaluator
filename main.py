@@ -8,6 +8,7 @@ from sklearn.metrics import r2_score
 from bs4 import BeautifulSoup
 import re
 import requests
+import time
 # from yahoo_finance import Share
 
 betweenTagsRegEx = '(?<=>)(.*\n?)(?=<)'
@@ -55,11 +56,45 @@ def buildCashFlowsLink(companyCode):
 def buildGetSectorLinkMiddleman(companyCode):
     return "https://www.barchart.com/stocks/sectors/rankings?symbol=" + companyCode
 
-# def getSectorDataLink():
-#     url = buildGetSectorLinkMiddleman(companyCode)
-#     response = requests.get(url)
-#     soup = BeautifulSoup(response.text, "lxml")
-#     sectors_list = soup.findAll("div", {"class": "sectors-list"})
+def getSectorDataLink():
+
+    url = "https://www.barchart.com/proxies/core-api/v1/quotes/get?fields=symbol%2CsymbolName%2Csectors%2ClastPrice%2CpriceChange%2CpercentChange%2ClowPrice1y%2CpriceChange%2CpercentChange%2CopenPrice%2ClastPrice1yAgo%2CopenPrice1y%2ChighPrice1y%2CmarketCap%2CpeRatioTrailing%2CearningsPerShare%2CannualNetIncome.format(millions%3B0)%2Cbeta%2CdividendRateTrailing%2CdividendYieldTrailing&method=%2Fquotes%2Fget&raw=1&symbols=NIO"
+
+    payload={}
+    headers = {
+        'authority': 'www.barchart.com',
+        'accept': 'application/json',
+        'user-agent': 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Mobile Safari/537.36',
+        'x-xsrf-token': 'eyJpdiI6IitUZGpVT3FLd3ZNSjNBbDB1dUppYWc9PSIsInZhbHVlIjoiQThnWnhrRkNxZ21sRjRTQXBQNDJmbHpqa1plUzhVWkVwRlh6RVRuNUFJTm56a3dyYXFkVDQxZ09oK2o1ajMzTiIsIm1hYyI6IjdlZjZmZWVjNTA1YWZhNmU5NzVmM2RkY2Y0Y2JmMGQ3OGZhY2VmZGI1NTEwZjEwNDQwYTYyNzFmOThkODI1NDUifQ==',
+        'sec-fetch-site': 'same-origin',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-dest': 'empty',
+        'referer': 'https://www.barchart.com/stocks/sectors/rankings?symbol=NIO',
+        'accept-language': 'en-US,en;q=0.9',
+        'cookie': 'cheat-01202021WebinarClosed=true; _gcl_au=1.1.1480181004.1610999181; _ga=GA1.2.2111207041.1610999181; _gid=GA1.2.1656464231.1610999181; usprivacy=1---; __qca=P0-1677819782-1610999185069; _admrla=2.0-a304f9ab-a6ab-6eae-1404-0f39ecdf7bb2; _pbjs_userid_consent_data=3524755945110770; _pubcid=2d01dcac-61e6-4fc9-9c1b-98812baddf01; cto_bidid=2KxbZl95NzBnNHlBWDNjMkJ0T3Y0ck9yWVdvbkQ2b3lJakJjZG9EV0QwUGVYemtCQ0tLbXV4SlVCWExkYVJ4MXlsRnMxZGwyVnp6cnRrS0htRGpRbU0lMkZaMk4wbjVSaUI5dmIlMkJ0WHNWT1FjQm1JJTJCVSUzRA; cto_bundle=FY2OWl9TSWE1cU5BYzUyOERRcXByWkxxOVl5UEV0WFg0Y1BNRzFPS21BdmdjaUpobmJTdmtrdFpTUnhyeUpWJTJGWHNhJTJCYjBrMU84WUlRQ2pFamF2bnY5YTc5JTJCMU4yQ3ExQ1lBcUs2OUh5QjVmSFQlMkJRbTE5akZHWGV0bDEybllPZiUyRlR4JTJGclh3JTJCbWFLUWVkb2cxY05jMDNtc1VjQSUzRCUzRA; pbjs-unifiedid=%7B%22TDID%22%3A%22eca9fe6c-cc0b-42d8-b13f-6fd4eeb9aea1%22%2C%22TDID_LOOKUP%22%3A%22TRUE%22%2C%22TDID_CREATED_AT%22%3A%222020-12-18T20%3A15%3A47%22%7D; idl_env=AvQSGFJO8RUPzSS0fgIFuNuCuG0zmCB_JhZoctwVTeYMb-ub1IFqvTEupYdR8IYycoFlRMNr4cMApaX2iGlFXdQlMQT3tDdwx0aTf7V_OrFPrNZE1Qu1BUtpi3_6Y2D4Qsz8juhlzMtyK5OUbefSW6QhG9xYYcbFcLwt5FOSeUzWZzUuurzvF7f0746AnqL8SmEzIBd2QZilVDkElLahVav4O1UTN8NpFx5Ilizm9zBBFjUoz6-Sn3kXASDImqzduX2WCxnMBEQnRu-etw-4X2VYYp_LTPpnFwDyDEaylymReWTIcw; fc=%7B%22MjY0fm51bGxfbnVsbH4xMDM0LU9BVEgxMDEzNzgwMDAtMjk2NjY4Ng%22%3A%221%3A1611000947202%22%2C%22NjI4fm51bGxfbnVsbH4yOTc0OjMwMDY2MzQ%22%3A%221%3A1611000965977%22%2C%22NjI4fm51bGxfbnVsbH4yOTc0OjMwNTYxOTA%22%3A%221%3A1611000996016%22%7D; pv=%7B%22d%22%3A%223%3A1611000947202%22%7D; GED_PLAYLIST_ACTIVITY=W3sidSI6IitVV20iLCJ0c2wiOjE2MTEwMDIxNDUsIm52IjowLCJ1cHQiOjE2MTEwMDA5NDEsImx0IjoxNjExMDAwOTQxfV0.; market=eyJpdiI6Ik1tMkQxRHpZeXJYeFpxSkpvQWd6Vmc9PSIsInZhbHVlIjoiazdvTTZ6STdjNDdMZHVyeXdOOGFPdz09IiwibWFjIjoiZTE1ODFiMDExMWFiNjIwM2M4MjFmMzk1NTUwY2YxZDUxNzgzYjIwMTkxYjE3MDMyM2QzZWQ5OGU5NjRiMjJlMiJ9; __gads=ID=0bd151c279f68900:T=1611080926:S=ALNI_MaxMC7inGxyVT3i5K4F2qX86--eSg; cto_bundle=AFXBV19TSWE1cU5BYzUyOERRcXByWkxxOVkyQlU1WGpwaE5iNm94RnJQTWgwUmdxU3hpeGxackNYanlwYjklMkZXMThXZk9HSTd2dHF3T0psSWZGaHJxS2o1V203cXBEbmtLbVFLRkxHYWZCUjRvd1poVzFHaXc1aEMzVFdhMG5pWU9lMUxSNmtxV2NoZXhYdGNQYkMlMkJoMkRWSFRnJTNEJTNE; cto_bundle=AFXBV19TSWE1cU5BYzUyOERRcXByWkxxOVkyQlU1WGpwaE5iNm94RnJQTWgwUmdxU3hpeGxackNYanlwYjklMkZXMThXZk9HSTd2dHF3T0psSWZGaHJxS2o1V203cXBEbmtLbVFLRkxHYWZCUjRvd1poVzFHaXc1aEMzVFdhMG5pWU9lMUxSNmtxV2NoZXhYdGNQYkMlMkJoMkRWSFRnJTNEJTNE; _awl=2.1611081161.0.4-881a78f4-a304f9aba6ab6eae14040f39ecdf7bb2-6763652d75732d6561737431-600725c9-0; laravel_token=eyJpdiI6Ijd1ZnA5KzFOZUQxeHFEY1NPQnhocFE9PSIsInZhbHVlIjoibzdQZUpBTDZqMEtkOWZCNEZvK0VoMnNpYzFSSitvVHAxb0lRWjFxb0ZybW40a05kcHo0UHN4c09uVFptK3pHQlplWGtxVjJsRTlaS0RVZWtIdXVjYkpKSHNTZlJNdVNPMWoyVE1scW15a1owTWlSODhxd1l6bCsrMkU3VVlzR3hDb1FTcDQrSFdUallmTTcwZXgybWNMc0NpbC9WcjdaU01BMkVvejA2UUhMYWxjRktML2pnaWJHUnl1SjNtS1Azc3B6c1FucUVWc09jL1UzZDBqSTEzK1dqZ21mbTVJdjVGc1VVT0VoaTc5VWcxMjliMVF4LzRwcjJVSnFKZzV5dSIsIm1hYyI6ImE3NjAyY2JkZDVmNzg2NWJkYjhmNzQ0N2UzMjIwMDlhYWZiOWViODRmMzc2MzYyZWQzZmVmYjFlMzViYjE2MTEifQ%3D%3D; XSRF-TOKEN=eyJpdiI6IitUZGpVT3FLd3ZNSjNBbDB1dUppYWc9PSIsInZhbHVlIjoiQThnWnhrRkNxZ21sRjRTQXBQNDJmbHpqa1plUzhVWkVwRlh6RVRuNUFJTm56a3dyYXFkVDQxZ09oK2o1ajMzTiIsIm1hYyI6IjdlZjZmZWVjNTA1YWZhNmU5NzVmM2RkY2Y0Y2JmMGQ3OGZhY2VmZGI1NTEwZjEwNDQwYTYyNzFmOThkODI1NDUifQ%3D%3D; laravel_session=eyJpdiI6ImdHYUliN3hVRDB5RytHdDZLdWdyN2c9PSIsInZhbHVlIjoiUEttQUxyZGgzNC85MmJIYlNQSVZHWFpoaDRoalRRc0EyNWo5Vi9RdHR6bkxRUnJlUVcvdFc3NksvYVhRNCs5SyIsIm1hYyI6ImNiMmIxMjVjNGU0MDk2ZmRkM2Y4YTIyNGI2MWQ1MmM5ZjcyN2YwZDRjM2E0OWYyM2Q2YTJkYTkxNTZlZWYwZTEifQ%3D%3D; _gat_UA-2009749-51=1; IC_ViewCounter_www.barchart.com=8'
+        }
+
+    response = requests.request("GET", url, headers=headers, data=payload)
+
+    # print(response.text)
+
+    # middleman = buildGetSectorLinkMiddleman(companyCode)
+    # headers = requests.utils.default_headers()
+    # headers.update({
+    #     'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0',
+    #     })
+
+    # response = requests.get(middleman, headers=headers)
+    # soup = BeautifulSoup(response.text, "lxml")
+
+    # daddy_div = soup.find("div",{"class": "sectors-list"}).find('ul')
+
+    # try:
+        
+    # except:
+    #     sector_data_link = "unavailable. Please enter a valid stock market code."
+
+    return response.text
 
 def getFinData(companyCode):
     
@@ -270,11 +305,10 @@ def evalPeRatios(finData, industry):
         shortScore -= .3*finData['priceBookRatio']    
 
 
+
 companyCode = input("Enter company's stock market code: ")
+print(getSectorDataLink())
 print("The current price of " + str(getName(companyCode)) + " is: $"+str(livePrice(companyCode))+" per share.")
-# print("yfin price: " + str(Share(companyCode).get_price()))
-
-
 finData = getFinData(companyCode)
 industry = str(input("Enter company's industry from http://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/pedata.html : "))
 evalPeRatios(finData, industry)
