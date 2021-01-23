@@ -61,7 +61,13 @@ def buildIndustryLink(companyCode):
     url = buildGetSectorLinkMiddleman(companyCode)
     response = requests.get(url)    
     soup = BeautifulSoup(response.text, "lxml")
-    industry = str(soup.find("div", {"class": "comparison"}).find("a"))
+    comparison_div = soup.find("div", {"class": "comparison"})
+
+    if comparison_div != None:
+        industry = str(comparison_div.find("a"))
+    else:
+        return "no comparable industry at this point"
+
     industry_url_raw = industry.split('"')[1]
     industry_url_final = industry_url_raw.split('amp;')[0] + industry_url_raw.split('amp;')[1]
 
@@ -69,6 +75,10 @@ def buildIndustryLink(companyCode):
 
 def getIndustryData():
     url = buildIndustryLink(companyCode)
+
+    if url == "no comparable industry at this point":
+        return "no comparable sector or industry at this point"
+
     response = requests.get(url)    
     soup = BeautifulSoup(response.text, "lxml")
 
