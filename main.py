@@ -55,69 +55,46 @@ def buildCashFlowsLink(companyCode):
     return "https://finance.yahoo.com/quote/"+ companyCode + "/cash-flow?p="+ companyCode
 
 def buildGetSectorLinkMiddleman(companyCode):
-    return "https://www.barchart.com/stocks/sectors/rankings?symbol=" + companyCode
+    return "https://eresearch.fidelity.com/eresearch/evaluate/snapshot.jhtml?symbols=" + companyCode
 
-def getSectorData(companyCode):
+def buildIndustryLink(companyCode):
+    url = buildGetSectorLinkMiddleman(companyCode)
+    response = requests.get(url)    
+    soup = BeautifulSoup(response.text, "lxml")
+    industry = str(soup.find("div", {"class": "comparison"}).find("a"))
+    industry_url_raw = industry.split('"')[1]
+    industry_url_final = industry_url_raw.split('amp;')[0] + industry_url_raw.split('amp;')[1]
 
-    #get company sector
+    return industry_url_final
 
-    url = "https://www.barchart.com/proxies/core-api/v1/quotes/get?fields=symbol%2CsymbolName%2Csectors%2ClastPrice%2CpriceChange%2CpercentChange%2ClowPrice1y%2CpriceChange%2CpercentChange%2CopenPrice%2ClastPrice1yAgo%2CopenPrice1y%2ChighPrice1y%2CmarketCap%2CpeRatioTrailing%2CearningsPerShare%2CannualNetIncome.format(millions%3B0)%2Cbeta%2CdividendRateTrailing%2CdividendYieldTrailing&method=%2Fquotes%2Fget&raw=1&symbols=" + companyCode
+def getIndustryData():
+    url = buildIndustryLink(companyCode)
+    response = requests.get(url)    
+    soup = BeautifulSoup(response.text, "lxml")
 
-    payload={}
-    headers = {
-        'authority': 'www.barchart.com',
-        'accept': 'application/json',
-        'user-agent': 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Mobile Safari/537.36',
-        'x-xsrf-token': 'eyJpdiI6IlNSU1prbld3Y1dFa0Z3SHJaU1FZd3c9PSIsInZhbHVlIjoiVUpUajVZdnNDYmgzaFJ5Y0dHeFBHR2ZTT2JqM2ttZlozU3ZSajRRY1lxQ0srUDFpcHBZbmF6QmJWVGtZdmVUNCIsIm1hYyI6IjhmMjc0YzBmNDk5NmI1NGFjMWExNDA0MmYwOWEyYTkxZTkwYzU0ZDEzNTJmY2RlOWY2ZDZhZjQxMmZiNDEyYjgifQ==',
-        'sec-fetch-site': 'same-origin',
-        'sec-fetch-mode': 'cors',
-        'sec-fetch-dest': 'empty',
-        'referer': 'https://www.barchart.com/stocks/sectors/rankings?symbol=' + companyCode,
-        'accept-language': 'en-US,en;q=0.9',
-        'cookie': '_gcl_au=1.1.1480181004.1610999181; _ga=GA1.2.2111207041.1610999181; usprivacy=1---; __qca=P0-1677819782-1610999185069; _admrla=2.0-a304f9ab-a6ab-6eae-1404-0f39ecdf7bb2; _pbjs_userid_consent_data=3524755945110770; _pubcid=2d01dcac-61e6-4fc9-9c1b-98812baddf01; pbjs-unifiedid=%7B%22TDID%22%3A%22eca9fe6c-cc0b-42d8-b13f-6fd4eeb9aea1%22%2C%22TDID_LOOKUP%22%3A%22TRUE%22%2C%22TDID_CREATED_AT%22%3A%222020-12-18T20%3A15%3A47%22%7D; idl_env=AvQSGFJO8RUPzSS0fgIFuNuCuG0zmCB_JhZoctwVTeYMb-ub1IFqvTEupYdR8IYycoFlRMNr4cMApaX2iGlFXdQlMQT3tDdwx0aTf7V_OrFPrNZE1Qu1BUtpi3_6Y2D4Qsz8juhlzMtyK5OUbefSW6QhG9xYYcbFcLwt5FOSeUzWZzUuurzvF7f0746AnqL8SmEzIBd2QZilVDkElLahVav4O1UTN8NpFx5Ilizm9zBBFjUoz6-Sn3kXASDImqzduX2WCxnMBEQnRu-etw-4X2VYYp_LTPpnFwDyDEaylymReWTIcw; cto_bundle=85drx19TSWE1cU5BYzUyOERRcXByWkxxOVkwTUdNdGVuNnJCNHhoUU5CcWIzQzFSTFVhVDFlRjE5NUlBQjd4N0FxSDRjeVdic2tWSmdmcVpFc0I0OHo3NnY3aktFb1BjclB0elRva3VjWDBTR2V6a1BxRmw3SWVDRFclMkZIU01wQkc5Z0l6Zmlyb0NjY0FCdCUyRjBwZWsyNkliYndRJTNEJTNE; cto_bidid=7Gtu5F95NzBnNHlBWDNjMkJ0T3Y0ck9yWVdvbkQ2b3lJakJjZG9EV0QwUGVYemtCQ0tLbXV4SlVCWExkYVJ4MXlsRnMxZGwyVnp6cnRrS0htRGpRbU0lMkZaMk4lMkZoNnQzNm5HdVFhJTJGVktDMlFWWHQ1byUzRA; fc=%7B%22NjI4fm51bGxfbnVsbH4yOTc0OjMwMjk3NzU%22%3A%221%3A1611092692165%22%7D; pv=%7B%22d%22%3A%224%3A1611000947202%22%7D; __gads=ID=0bd151c279f68900:T=1611099398:S=ALNI_Masyn3wMvj4at7muwWT4jotsCPNXw; _ccm_inf=1; CRISPSUBNO=; cto_bundle=iJY7Jl9TSWE1cU5BYzUyOERRcXByWkxxOVl6MlZZS1ZnZlR0aUFBJTJGTms4JTJCVVJvdFRaYlJhM3F1TGxzcGx0RHNScmxQRWNmMDJuSkxRWWt1b2VTWlE4MzlOUk5landHQjg0bGdJNlhZd2F0UlVSVFhqbHZoNldyZWRDMDVlVjElMkZBQlU1OHNIemQ5bWdTeThaekduRkZ6c3RDQVElM0QlM0Q; cto_bundle=iJY7Jl9TSWE1cU5BYzUyOERRcXByWkxxOVl6MlZZS1ZnZlR0aUFBJTJGTms4JTJCVVJvdFRaYlJhM3F1TGxzcGx0RHNScmxQRWNmMDJuSkxRWWt1b2VTWlE4MzlOUk5landHQjg0bGdJNlhZd2F0UlVSVFhqbHZoNldyZWRDMDVlVjElMkZBQlU1OHNIemQ5bWdTeThaekduRkZ6c3RDQVElM0QlM0Q; market=eyJpdiI6IlM0eXltZlNjNENhaGEwbU1uWUM1c1E9PSIsInZhbHVlIjoiRHViWHV1cHZkdjdMMUNPRE1VZ0c0dz09IiwibWFjIjoiNTY1MzkyN2EzYzBiNGMxODRjZjFiNWY1MDgzYjkxNjE2OTNlYWQ2OTMwOTQ0MGEwZWYyODQxN2ExMTUzYTdjMiJ9; bull-puts-01272021PageView=1; bull-puts-01272021WebinarClosed=true; _gid=GA1.2.759695256.1611356924; IC_ViewCounter_www.barchart.com=2; _awl=2.1611356955.0.4-6dfa3ca-a304f9aba6ab6eae14040f39ecdf7bb2-6763652d75732d6561737431-600b5b15-0; laravel_token=eyJpdiI6InZZMXZ4T2d2MUNQd01aMEx0N2N0b2c9PSIsInZhbHVlIjoiQ0pDeFFnL1YxS3lDbmJ3TDg0QkJMZm9UU1RCMS9IMEMxT1FSSVFWNEtaajBCS2JOdC92Z3dod0lmN2VPSlJRa3ZXTlIzMVZ6WFBXY0kwcG10NThqQ2F2M2NjVXUyNFg4Tm5mSHlLTzMxR0ZaR29QRVdSWWpGNnZQcldjbjAxTFlBcFVDWjNtd1oxcHNpTFVyblRxUVU1bWdJeC82ckNTV3FUSEd5bkNRV0VkSmdaV1grVmJUdVI0c0lxb0FaTG5jWXE1Q2Q4dzZ1UUxMOWh1eG91YVF6VURFYlRqcVBGZW40N09melg0cXBpNm55VWNDbXhqQlN5SFE4b2JvM1IyZSIsIm1hYyI6IjgzNWRhNmUwYWZlZGIwYWU2N2U2OTAzMzQ0MTY0MWJmY2RmZmY2ZjgyMmI5OWNmMzQzNjQ2OTUwNzZkNDIxNTgifQ%3D%3D; XSRF-TOKEN=eyJpdiI6IlNSU1prbld3Y1dFa0Z3SHJaU1FZd3c9PSIsInZhbHVlIjoiVUpUajVZdnNDYmgzaFJ5Y0dHeFBHR2ZTT2JqM2ttZlozU3ZSajRRY1lxQ0srUDFpcHBZbmF6QmJWVGtZdmVUNCIsIm1hYyI6IjhmMjc0YzBmNDk5NmI1NGFjMWExNDA0MmYwOWEyYTkxZTkwYzU0ZDEzNTJmY2RlOWY2ZDZhZjQxMmZiNDEyYjgifQ%3D%3D; laravel_session=eyJpdiI6IkVjbldydXk4N1BQR1RsK1FMQW9xOEE9PSIsInZhbHVlIjoibjdXZlRWaHQvUDg3U0pmM1RCSllibWNuS3JWOTJXUHlRTE5pMFQ1Z3lUSGtQcjZ1RTRZWStBVkFnTTlqR2hMSSIsIm1hYyI6IjM2YWUxZjVjOTM0ODEzZGQ4ZTQ2NDAwNjdiY2E0OWVlODMyYWIyNjVmNGMzZTc1YjgwOGI0MDc1NWNjZjY1YmMifQ%3D%3D; _gat_UA-2009749-51=1'
-    }
+    categories_raw = soup.find('div', {'class' : 'sec-fundamentals'}).find_all('th')
+    data_points_raw = soup.find('div', {'class' : 'sec-fundamentals'}).find_all('td')
 
-    response = requests.request("GET", url, headers=headers, data=payload)
+    categories_raw.pop(0)
+    categories_raw.pop(0)
 
-    data = json.loads(response.content)
-    company_sector_symbol = data['data'][0]['sectors'][1]['symbol']
-    company_sector_description = data['data'][0]['sectors'][1]['description']
+    categories = []
+    data_points = []
 
-    #get stock list from sector
+    industry_data = {}
 
-    url = "https://www.barchart.com/proxies/core-api/v1/quotes/get?lists=stocks.inSector.all(" + company_sector_symbol + ")&fields=symbol%2CsymbolName%2CweightedAlpha%2ClastPrice%2CpriceChange%2CpercentChange%2ChighPrice1y%2ClowPrice1y%2CpercentChange1y%2CtradeTime%2CsymbolCode%2CsymbolType%2ChasOptions&orderBy=weightedAlpha&orderDir=desc&meta=field.shortName%2Cfield.type%2Cfield.description&hasOptions=true&page=1&limit=25&raw=1"
+    for item in categories_raw:
+        categories.append(item.text)
 
-    payload={}
-    headers = {
-        'authority': 'www.barchart.com',
-        'accept': 'application/json',
-        'user-agent': 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Mobile Safari/537.36',
-        'x-xsrf-token': 'eyJpdiI6IlNSU1prbld3Y1dFa0Z3SHJaU1FZd3c9PSIsInZhbHVlIjoiVUpUajVZdnNDYmgzaFJ5Y0dHeFBHR2ZTT2JqM2ttZlozU3ZSajRRY1lxQ0srUDFpcHBZbmF6QmJWVGtZdmVUNCIsIm1hYyI6IjhmMjc0YzBmNDk5NmI1NGFjMWExNDA0MmYwOWEyYTkxZTkwYzU0ZDEzNTJmY2RlOWY2ZDZhZjQxMmZiNDEyYjgifQ==',
-        'sec-fetch-site': 'same-origin',
-        'sec-fetch-mode': 'cors',
-        'sec-fetch-dest': 'empty',
-        'referer': 'https://www.barchart.com/stocks/quotes/' + company_sector_symbol + '/components/' + companyCode,
-        'accept-language': 'en-US,en;q=0.9',
-        'cookie': '_gcl_au=1.1.1480181004.1610999181; _ga=GA1.2.2111207041.1610999181; usprivacy=1---; __qca=P0-1677819782-1610999185069; _admrla=2.0-a304f9ab-a6ab-6eae-1404-0f39ecdf7bb2; _pbjs_userid_consent_data=3524755945110770; _pubcid=2d01dcac-61e6-4fc9-9c1b-98812baddf01; pbjs-unifiedid=%7B%22TDID%22%3A%22eca9fe6c-cc0b-42d8-b13f-6fd4eeb9aea1%22%2C%22TDID_LOOKUP%22%3A%22TRUE%22%2C%22TDID_CREATED_AT%22%3A%222020-12-18T20%3A15%3A47%22%7D; idl_env=AvQSGFJO8RUPzSS0fgIFuNuCuG0zmCB_JhZoctwVTeYMb-ub1IFqvTEupYdR8IYycoFlRMNr4cMApaX2iGlFXdQlMQT3tDdwx0aTf7V_OrFPrNZE1Qu1BUtpi3_6Y2D4Qsz8juhlzMtyK5OUbefSW6QhG9xYYcbFcLwt5FOSeUzWZzUuurzvF7f0746AnqL8SmEzIBd2QZilVDkElLahVav4O1UTN8NpFx5Ilizm9zBBFjUoz6-Sn3kXASDImqzduX2WCxnMBEQnRu-etw-4X2VYYp_LTPpnFwDyDEaylymReWTIcw; cto_bundle=85drx19TSWE1cU5BYzUyOERRcXByWkxxOVkwTUdNdGVuNnJCNHhoUU5CcWIzQzFSTFVhVDFlRjE5NUlBQjd4N0FxSDRjeVdic2tWSmdmcVpFc0I0OHo3NnY3aktFb1BjclB0elRva3VjWDBTR2V6a1BxRmw3SWVDRFclMkZIU01wQkc5Z0l6Zmlyb0NjY0FCdCUyRjBwZWsyNkliYndRJTNEJTNE; cto_bidid=7Gtu5F95NzBnNHlBWDNjMkJ0T3Y0ck9yWVdvbkQ2b3lJakJjZG9EV0QwUGVYemtCQ0tLbXV4SlVCWExkYVJ4MXlsRnMxZGwyVnp6cnRrS0htRGpRbU0lMkZaMk4lMkZoNnQzNm5HdVFhJTJGVktDMlFWWHQ1byUzRA; fc=%7B%22NjI4fm51bGxfbnVsbH4yOTc0OjMwMjk3NzU%22%3A%221%3A1611092692165%22%7D; pv=%7B%22d%22%3A%224%3A1611000947202%22%7D; __gads=ID=0bd151c279f68900:T=1611099398:S=ALNI_Masyn3wMvj4at7muwWT4jotsCPNXw; _ccm_inf=1; CRISPSUBNO=; cto_bundle=iJY7Jl9TSWE1cU5BYzUyOERRcXByWkxxOVl6MlZZS1ZnZlR0aUFBJTJGTms4JTJCVVJvdFRaYlJhM3F1TGxzcGx0RHNScmxQRWNmMDJuSkxRWWt1b2VTWlE4MzlOUk5landHQjg0bGdJNlhZd2F0UlVSVFhqbHZoNldyZWRDMDVlVjElMkZBQlU1OHNIemQ5bWdTeThaekduRkZ6c3RDQVElM0QlM0Q; cto_bundle=iJY7Jl9TSWE1cU5BYzUyOERRcXByWkxxOVl6MlZZS1ZnZlR0aUFBJTJGTms4JTJCVVJvdFRaYlJhM3F1TGxzcGx0RHNScmxQRWNmMDJuSkxRWWt1b2VTWlE4MzlOUk5landHQjg0bGdJNlhZd2F0UlVSVFhqbHZoNldyZWRDMDVlVjElMkZBQlU1OHNIemQ5bWdTeThaekduRkZ6c3RDQVElM0QlM0Q; market=eyJpdiI6IlM0eXltZlNjNENhaGEwbU1uWUM1c1E9PSIsInZhbHVlIjoiRHViWHV1cHZkdjdMMUNPRE1VZ0c0dz09IiwibWFjIjoiNTY1MzkyN2EzYzBiNGMxODRjZjFiNWY1MDgzYjkxNjE2OTNlYWQ2OTMwOTQ0MGEwZWYyODQxN2ExMTUzYTdjMiJ9; bull-puts-01272021PageView=1; bull-puts-01272021WebinarClosed=true; _gid=GA1.2.759695256.1611356924; IC_ViewCounter_www.barchart.com=2; _awl=2.1611356955.0.4-6dfa3ca-a304f9aba6ab6eae14040f39ecdf7bb2-6763652d75732d6561737431-600b5b15-0; laravel_token=eyJpdiI6InZZMXZ4T2d2MUNQd01aMEx0N2N0b2c9PSIsInZhbHVlIjoiQ0pDeFFnL1YxS3lDbmJ3TDg0QkJMZm9UU1RCMS9IMEMxT1FSSVFWNEtaajBCS2JOdC92Z3dod0lmN2VPSlJRa3ZXTlIzMVZ6WFBXY0kwcG10NThqQ2F2M2NjVXUyNFg4Tm5mSHlLTzMxR0ZaR29QRVdSWWpGNnZQcldjbjAxTFlBcFVDWjNtd1oxcHNpTFVyblRxUVU1bWdJeC82ckNTV3FUSEd5bkNRV0VkSmdaV1grVmJUdVI0c0lxb0FaTG5jWXE1Q2Q4dzZ1UUxMOWh1eG91YVF6VURFYlRqcVBGZW40N09melg0cXBpNm55VWNDbXhqQlN5SFE4b2JvM1IyZSIsIm1hYyI6IjgzNWRhNmUwYWZlZGIwYWU2N2U2OTAzMzQ0MTY0MWJmY2RmZmY2ZjgyMmI5OWNmMzQzNjQ2OTUwNzZkNDIxNTgifQ%3D%3D; XSRF-TOKEN=eyJpdiI6IlNSU1prbld3Y1dFa0Z3SHJaU1FZd3c9PSIsInZhbHVlIjoiVUpUajVZdnNDYmgzaFJ5Y0dHeFBHR2ZTT2JqM2ttZlozU3ZSajRRY1lxQ0srUDFpcHBZbmF6QmJWVGtZdmVUNCIsIm1hYyI6IjhmMjc0YzBmNDk5NmI1NGFjMWExNDA0MmYwOWEyYTkxZTkwYzU0ZDEzNTJmY2RlOWY2ZDZhZjQxMmZiNDEyYjgifQ%3D%3D; laravel_session=eyJpdiI6IkVjbldydXk4N1BQR1RsK1FMQW9xOEE9PSIsInZhbHVlIjoibjdXZlRWaHQvUDg3U0pmM1RCSllibWNuS3JWOTJXUHlRTE5pMFQ1Z3lUSGtQcjZ1RTRZWStBVkFnTTlqR2hMSSIsIm1hYyI6IjM2YWUxZjVjOTM0ODEzZGQ4ZTQ2NDAwNjdiY2E0OWVlODMyYWIyNjVmNGMzZTc1YjgwOGI0MDc1NWNjZjY1YmMifQ%3D%3D; _gat_UA-2009749-51=1'
-    }
+    for item in data_points_raw:
+        item = str(item).replace('<td>', '').replace('</td>', '')
+        item = str(item).strip()
+        data_points.append(item)
 
-    response = requests.request("GET", url, headers=headers, data=payload)
+    for i in range(1, 10):
+        industry_data[categories[i]] = data_points[i]
 
-    data = json.loads(response.content)
-    data_count = data['count']
-    total_alpha = 0.0
-    
-    for obj in data['data']:
-        # print(obj)
-        # print('----------')
-        alpha = obj['weightedAlpha'].split("+")[1]
-        total_alpha = total_alpha + float(alpha)
-
-    sector_alpha = total_alpha / data_count
-
-    sector_data = {"data" : {"sector-alpha" : sector_alpha, "sector-name" : company_sector_description}}
-
-    return sector_data
+    return industry_data
 
 def getFinData(companyCode):
     
@@ -343,7 +320,7 @@ def getHistoricalData(companyCode):
     return response
 
 companyCode = input("Enter company's stock market code: ")
-print(getSectorData(companyCode))
+print(getIndustryData())
 print("The current price of " + str(getName(companyCode)) + " is: $"+str(livePrice(companyCode))+" per share.")
 finData = getFinData(companyCode)
 industry = str(input("Enter company's industry from http://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/pedata.html : "))
