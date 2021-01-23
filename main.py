@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import json
 from matplotlib import pyplot
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import LogisticRegression
@@ -9,6 +10,7 @@ from bs4 import BeautifulSoup
 import re
 import requests
 import io
+import time
 # from yahoo_finance import Share
 
 betweenTagsRegEx = '(?<=>)(.*\n?)(?=<)'
@@ -54,13 +56,56 @@ def buildCashFlowsLink(companyCode):
     return "https://finance.yahoo.com/quote/"+ companyCode + "/cash-flow?p="+ companyCode
 
 def buildGetSectorLinkMiddleman(companyCode):
-    return "https://www.barchart.com/stocks/sectors/rankings?symbol=" + companyCode
+    return "https://eresearch.fidelity.com/eresearch/evaluate/snapshot.jhtml?symbols=" + companyCode
 
-# def getSectorDataLink():
-#     url = buildGetSectorLinkMiddleman(companyCode)
-#     response = requests.get(url)
-#     soup = BeautifulSoup(response.text, "lxml")
-#     sectors_list = soup.findAll("div", {"class": "sectors-list"})
+def buildIndustryLink(companyCode):
+    url = buildGetSectorLinkMiddleman(companyCode)
+    response = requests.get(url)    
+    soup = BeautifulSoup(response.text, "lxml")
+    comparison_div = soup.find("div", {"class": "comparison"})
+
+    if comparison_div != None:
+        industry = str(comparison_div.find("a"))
+    else:
+        return "no comparable industry at this point"
+
+    industry_url_raw = industry.split('"')[1]
+    industry_url_final = industry_url_raw.split('amp;')[0] + industry_url_raw.split('amp;')[1]
+
+    return industry_url_final
+
+def getIndustryData():
+    url = buildIndustryLink(companyCode)
+
+    if url == "no comparable industry at this point":
+        return "no comparable sector or industry at this point"
+
+    response = requests.get(url)    
+    soup = BeautifulSoup(response.text, "lxml")
+
+    categories_raw = soup.find('div', {'class' : 'sec-fundamentals'}).find_all('th')
+    data_points_raw = soup.find('div', {'class' : 'sec-fundamentals'}).find_all('td')
+
+    categories_raw.pop(0)
+    categories_raw.pop(0)
+
+    categories = []
+    data_points = []
+
+    industry_data = {}
+
+    for item in categories_raw:
+        categories.append(item.text)
+
+    for item in data_points_raw:
+        item = str(item).replace('<td>', '').replace('</td>', '')
+        item = str(item).strip()
+        data_points.append(item)
+
+    for i in range(0, 10):
+        industry_data[categories[i]] = data_points[i]
+
+    return industry_data
 
 def getFinData(companyCode):
     
@@ -330,11 +375,9 @@ def longTermMomentum(df):
 
 
 companyCode = input("Enter company's stock market code: ")
-companyyCode = companyCode.upper()
+companyCode = companyCode.upper()
+print(getIndustryData())
 print("The current price of " + str(getName(companyCode)) + " is: $"+str(livePrice(companyCode))+" per share.")
-# print("yfin price: " + str(Share(companyCode).get_price()))
-
-
 finData = getFinData(companyCode)
 # industry = str(input("Enter company's industry from http://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/pedata.html : "))
 # evalPeRatios(finData, industry)
