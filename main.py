@@ -91,7 +91,7 @@ def getIndustryData():
         item = str(item).strip()
         data_points.append(item)
 
-    for i in range(1, 10):
+    for i in range(0, 10):
         industry_data[categories[i]] = data_points[i]
 
     return industry_data
