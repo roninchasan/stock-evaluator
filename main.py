@@ -8,6 +8,7 @@ from sklearn.metrics import r2_score
 from bs4 import BeautifulSoup
 import re
 import requests
+import io
 # from yahoo_finance import Share
 
 betweenTagsRegEx = '(?<=>)(.*\n?)(?=<)'
@@ -145,7 +146,10 @@ def getFinData(companyCode):
         elif "N/A" in data:
             data = ''
         else:
-            data = float(data)
+            try:
+                data = float(data)
+            except:
+                data = ''
 
         finalFinData.append(data)
 
@@ -176,14 +180,14 @@ def getCashFlows(companyCode):
     return freeCashFlows
 
 def evalCashFlows(freeCashFlows):
-    print(freeCashFlows)
+    # print(freeCashFlows)
     xtrain = np.array([range(1,len(freeCashFlows)+1)], dtype=float).reshape(-1,1)
     ytrain = np.array(freeCashFlows,dtype=float)
     model = LinearRegression().fit(xtrain, ytrain)
     score = model.score(xtrain, ytrain)
-    print("r:" + str(score))
+    print("FCF r:" + str(score))
     slope = -1 * model.coef_[0]
-    print("slope: " + str(slope))
+    print("FCF slope: " + str(slope))
 
 def evalPeRatios(finData, industry):
     df = pd.read_html("http://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/pedata.html", header = 0, index_col="Industry Name")[0]
@@ -203,7 +207,7 @@ def evalPeRatios(finData, industry):
     global longScore
     global shortScore
 
-    print(finData)
+    # print(finData)
 
     if ((finData['trailingPE'] !='' and finData['forwardPE'] !='') and (finData['trailingPE'] < finData['forwardPE'])):
         #company is expected to grow
@@ -282,21 +286,66 @@ def getHistoricalData(companyCode):
 
     response = requests.request("GET", url, headers=headers, params=querystring)
 
-    return response
+    rawData = io.StringIO(response.text)
+    data = pd.read_csv(rawData)
+
+    marketCap = data['close'] * data['volume']
+
+    data.insert(6,'MarketCap', marketCap)
+
+
+    return data
+
+def shortTermMomentum(df):
+
+    dfSelect = df.iloc[0:12]
+    xtrain = np.array([range(1,13)], dtype=float).reshape(-1,1)
+    ytrain = np.array(dfSelect['close'],dtype=float)
+
+    linModel = LinearRegression().fit(xtrain, ytrain)
+    print("Linear regression slope for time vs. price over last 3 months:", (-1 * linModel.coef_[0]))
+    print("Linear regression intercept for time vs. price over last 3 months:", linModel.intercept_)
+    print("Linear regression score for time vs. price over last 3 months:", linModel.score(xtrain, ytrain))
+
+    # logModel = LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=2000).fit(xtrain, dfSelect[['close']])
+    # print("Logistic regression slope for time vs. price over last 3 months:", logModel.coef_[0][0])
+    # print("Logistic regression score for time vs. price over last 3 months:", logModel.score(dfSelect[['close']], dfSelect.index))
+
+    
+
+def longTermMomentum(df):
+
+    dfSelect = df.iloc[0:52]
+    xtrain = np.array([range(1,53)], dtype=float).reshape(-1,1)
+    ytrain = np.array(dfSelect['close'],dtype=float)
+
+    linModel = LinearRegression().fit(xtrain, ytrain)
+    print("Linear regression slope for time vs. price over last 12 months:", (-1 * linModel.coef_[0]))
+    print("Linear regression intercept for time vs. price over last 12 months:", linModel.intercept_)
+    print("Linear regression score for time vs. price over last 12 months:", linModel.score(xtrain, ytrain))
+
+    # model = LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=2500).fit(dfSelect[['close']], dfSelect.index)
+    # print("Logistic regression slope for time vs. price last 12 months:", model.coef_[0][0])
+    # print("Logistic regression score for time vs. price last 12 months:", model.score(dfSelect[['close']], dfSelect.index))
+
 
 companyCode = input("Enter company's stock market code: ")
+companyyCode = companyCode.upper()
 print("The current price of " + str(getName(companyCode)) + " is: $"+str(livePrice(companyCode))+" per share.")
 # print("yfin price: " + str(Share(companyCode).get_price()))
 
 
 finData = getFinData(companyCode)
-industry = str(input("Enter company's industry from http://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/pedata.html : "))
-evalPeRatios(finData, industry)
-freeCashFlows = getCashFlows(companyCode)
-evalCashFlows(freeCashFlows)
+# industry = str(input("Enter company's industry from http://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/pedata.html : "))
+# evalPeRatios(finData, industry)
+# freeCashFlows = getCashFlows(companyCode)
+# evalCashFlows(freeCashFlows)
 historicalData = getHistoricalData(companyCode)
-
-
+print()
+shortTermMomentum(historicalData)
+print()
+longTermMomentum(historicalData)
+print()
 
 
 print("Short term investment score: " + str(shortScore))
