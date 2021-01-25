@@ -74,7 +74,7 @@ def buildIndustryLink(companyCode):
 
     return industry_url_final
 
-def getIndustryData():
+def getIndustryData(companyCode):
     url = buildIndustryLink(companyCode)
 
     if url == "no comparable industry at this point":
@@ -234,25 +234,9 @@ def evalCashFlows(freeCashFlows):
     slope = -1 * model.coef_[0]
     print("FCF slope: " + str(slope))
 
-def evalPeRatios(finData, industry):
-    df = pd.read_html("http://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/pedata.html", header = 0, index_col="Industry Name")[0]
-
-    industryGood = False
-
-    while (industryGood == False):
-        try: 
-            indTrailPE = df.loc[industry, "Trailing  PE"]
-            indForwardPE = df.loc[industry, 'Forward  PE']
-            indPEG = df.loc[industry, 'PEG  Ratio']
-            industryGood = True
-
-        except:
-            industry = input("The industry " + industry + " is not on this list. Please select one from the table:")
-
+def evalFinData(finData):
     global longScore
     global shortScore
-
-    # print(finData)
 
     if ((finData['trailingPE'] !='' and finData['forwardPE'] !='') and (finData['trailingPE'] < finData['forwardPE'])):
         #company is expected to grow
@@ -264,38 +248,16 @@ def evalPeRatios(finData, industry):
         shortScore -=5
 
 
-    if (finData['trailingPE'] !='')and ((finData['trailingPE'] < indTrailPE) ):
-        #company is undervalued & has room to grow - good long term investment
-        longScore += 10
-        shortScore +=8
-    else:
-        #company may be overvalued - potential sell 
-        longScore -= 5
-        shortScore -= 6
-
-
     if ((finData['PEGratio'] !='') and (finData['PEGratio'] < 1)):
         #company's future is undervalued - good long term investment
         longScore += 12
         shortScore +=8
-
     elif ((finData['PEGratio'] !='') and (finData['PEGratio'] > 1)):
         #company's future may be overvalued - potential sell 
         longScore -= 7
         shortScore -= 2
 
-
-    if ((finData['PEGratio'] !='')and (finData['PEGratio'] < indPEG) ):
-        #company expected to fall behind competition - poor long term investment
-        longScore -= 10
-        shortScore -=12
-
-    else:
-        #company expected to keep pace with or exceed competition - good long term investment 
-        longScore += 10
-        shortScore += 11
-
-
+    
     if ((finData['priceBookRatio'] !='') and (finData['priceBookRatio'] < 1)):
         #stock price below book value - undervalued - good long term investment
         longScore += 8/finData['priceBookRatio']
@@ -317,6 +279,53 @@ def evalPeRatios(finData, industry):
         #stock price is inflated/overvalued - not great long term investment 
         longScore -= .5*finData['priceBookRatio']
         shortScore -= .3*finData['priceBookRatio']    
+
+
+
+
+
+def compareIndustryData(finData, industry):
+    # df = pd.read_html("http://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/pedata.html", header = 0, index_col="Industry Name")[0]
+
+    # industryGood = False
+
+    # while (industryGood == False):
+    #     try: 
+    #         indTrailPE = df.loc[industry, "Trailing  PE"]
+    #         indForwardPE = df.loc[industry, 'Forward  PE']
+    #         indPEG = df.loc[industry, 'PEG  Ratio']
+    #         industryGood = True
+
+    #     except:
+    #         industry = input("The industry " + industry + " is not on this list. Please select one from the table:")
+
+    global longScore
+    global shortScore
+
+    indTrailPE = industry["P/E (Last Year GAAP Actual)"]
+    indForwardPE = industry["P/E (This Year's Estimate)"]
+    indPEG = industry["P/E (This Year's Estimate)"]/industry["EPS Growth (TTM vs. Prior TTM)"]
+    
+    if (finData['trailingPE'] !='')and ((finData['trailingPE'] < indTrailPE) ):
+        #company is undervalued & has room to grow - good long term investment
+        longScore += 10
+        shortScore +=8
+    else:
+        #company may be overvalued - potential sell 
+        longScore -= 5
+        shortScore -= 6
+
+
+    if ((finData['PEGratio'] !='')and (finData['PEGratio'] < indPEG) ):
+        #company expected to fall behind competition - poor long term investment
+        longScore -= 10
+        shortScore -=12
+
+    else:
+        #company expected to keep pace with or exceed competition - good long term investment 
+        longScore += 10
+        shortScore += 11
+
 
 
 def getHistoricalData(companyCode):
@@ -344,28 +353,27 @@ def getHistoricalData(companyCode):
 def shortTermMomentum(df):
 
     dfSelect = df.iloc[0:12]
-    xtrain = np.array([range(1,13)], dtype=float).reshape(-1,1)
+    xtrain = np.array([range(12,0,-1)], dtype=float).reshape(-1,1)
     ytrain = np.array(dfSelect['close'],dtype=float)
 
     linModel = LinearRegression().fit(xtrain, ytrain)
-    print("Linear regression slope for time vs. price over last 3 months:", (-1 * linModel.coef_[0]))
+    print("Linear regression slope for time vs. price over last 3 months:", (linModel.coef_[0]))
     print("Linear regression intercept for time vs. price over last 3 months:", linModel.intercept_)
     print("Linear regression score for time vs. price over last 3 months:", linModel.score(xtrain, ytrain))
 
     # logModel = LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=2000).fit(xtrain, dfSelect[['close']])
     # print("Logistic regression slope for time vs. price over last 3 months:", logModel.coef_[0][0])
     # print("Logistic regression score for time vs. price over last 3 months:", logModel.score(dfSelect[['close']], dfSelect.index))
-
     
 
 def longTermMomentum(df):
 
     dfSelect = df.iloc[0:52]
-    xtrain = np.array([range(1,53)], dtype=float).reshape(-1,1)
+    xtrain = np.array([range(52,0,-1)], dtype=float).reshape(-1,1)
     ytrain = np.array(dfSelect['close'],dtype=float)
 
     linModel = LinearRegression().fit(xtrain, ytrain)
-    print("Linear regression slope for time vs. price over last 12 months:", (-1 * linModel.coef_[0]))
+    print("Linear regression slope for time vs. price over last 12 months:", (linModel.coef_[0]))
     print("Linear regression intercept for time vs. price over last 12 months:", linModel.intercept_)
     print("Linear regression score for time vs. price over last 12 months:", linModel.score(xtrain, ytrain))
 
@@ -376,13 +384,16 @@ def longTermMomentum(df):
 
 companyCode = input("Enter company's stock market code: ")
 companyCode = companyCode.upper()
-print(getIndustryData())
 print("The current price of " + str(getName(companyCode)) + " is: $"+str(livePrice(companyCode))+" per share.")
 finData = getFinData(companyCode)
+industryData = getIndustryData(companyCode)
+
 # industry = str(input("Enter company's industry from http://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/pedata.html : "))
-# evalPeRatios(finData, industry)
+# evalFinData(finData)
+# compareIndustryData(finData, industryData)
 # freeCashFlows = getCashFlows(companyCode)
 # evalCashFlows(freeCashFlows)
+
 historicalData = getHistoricalData(companyCode)
 print()
 shortTermMomentum(historicalData)
