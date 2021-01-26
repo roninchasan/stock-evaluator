@@ -1,9 +1,12 @@
 import numpy as np
 import pandas as pd
 import json
+
 from matplotlib import pyplot
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import Perceptron
+from sklearn.preprocessing import PolynomialFeatures
 from sklearn.metrics import r2_score
 
 from bs4 import BeautifulSoup
@@ -361,9 +364,16 @@ def shortTermMomentum(df):
     print("Linear regression intercept for time vs. price over last 3 months:", linModel.intercept_)
     print("Linear regression score for time vs. price over last 3 months:", linModel.score(xtrain, ytrain))
 
-    # logModel = LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=2000).fit(xtrain, dfSelect[['close']])
+    polyX = PolynomialFeatures(interaction_only=True).fit_transform(xtrain).astype(int)
+    polyY = ytrain.astype(int)
+    polyModel = Perceptron(fit_intercept=False, max_iter=1000, tol=None,shuffle=False).fit(polyX, polyY)
+    # print("Polynomial regression slope for time vs. price over last 3 months:", polyModel.coef_)
+    print("Polynomial regression score for time vs. price over last 3 months:", polyModel.score(polyX, polyY))
+
+    logModel = LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=10000).fit(polyX, polyY)
     # print("Logistic regression slope for time vs. price over last 3 months:", logModel.coef_[0][0])
-    # print("Logistic regression score for time vs. price over last 3 months:", logModel.score(dfSelect[['close']], dfSelect.index))
+    print("Logistic regression score for time vs. price over last 3 months:", logModel.score(polyX, polyY))
+    
     
 
 def longTermMomentum(df):
@@ -377,9 +387,15 @@ def longTermMomentum(df):
     print("Linear regression intercept for time vs. price over last 12 months:", linModel.intercept_)
     print("Linear regression score for time vs. price over last 12 months:", linModel.score(xtrain, ytrain))
 
-    # model = LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=2500).fit(dfSelect[['close']], dfSelect.index)
+    polyX = PolynomialFeatures(interaction_only=True).fit_transform(xtrain).astype(int)
+    polyY = ytrain.astype(int)
+    polyModel = Perceptron(fit_intercept=False, max_iter=1000, tol=None,shuffle=False).fit(polyX, polyY)
+    # print("Polynomial regression slope for time vs. price over last 12 months:", polyModel.coef_)
+    print("Polynomial regression score for time vs. price over last 12 months:", polyModel.score(polyX, polyY))
+
+    logModel = LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=10000).fit(polyX, polyY)
     # print("Logistic regression slope for time vs. price last 12 months:", model.coef_[0][0])
-    # print("Logistic regression score for time vs. price last 12 months:", model.score(dfSelect[['close']], dfSelect.index))
+    print("Logistic regression score for time vs. price last 12 months:", logModel.score(polyX, polyY))
 
 
 companyCode = input("Enter company's stock market code: ")
