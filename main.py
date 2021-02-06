@@ -14,6 +14,7 @@ import re
 import requests
 import io
 import time
+import datetime
 # from yahoo_finance import Share
 
 betweenTagsRegEx = '(?<=>)(.*\n?)(?=<)'
@@ -373,8 +374,6 @@ def shortTermMomentum(df):
     logModel = LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=10000).fit(polyX, polyY)
     # print("Logistic regression slope for time vs. price over last 3 months:", logModel.coef_[0][0])
     print("Logistic regression score for time vs. price over last 3 months:", logModel.score(polyX, polyY))
-    
-    
 
 def longTermMomentum(df):
 
@@ -397,6 +396,42 @@ def longTermMomentum(df):
     # print("Logistic regression slope for time vs. price last 12 months:", model.coef_[0][0])
     print("Logistic regression score for time vs. price last 12 months:", logModel.score(polyX, polyY))
 
+def getNewsSentiment(companyCode):
+    response = requests.get('https://finnhub.io/api/v1/news-sentiment?symbol=' + companyCode + '&token=c08rrp748v6oofbnp750')
+    # print(response.json())
+    data = response.json()
+
+    return data
+
+    # json data formatted as tuple as follows:
+    # {'buzz': {'articlesInLastWeek': 40, 'buzz': 0.7843, 'weeklyAverage': 51}, 
+    # 'companyNewsScore': 0.9166, 'sectorAverageBullishPercent': 0.6558, 'sectorAverageNewsScore': 0.5427, 
+    # 'sentiment': {'bearishPercent': 0, 'bullishPercent': 1}, 'symbol': 'NIO'}
+    # access by data['buzz']['weeklyAverage']
+
+def getWallStreetRecs(companyCode):
+    response = requests.get('https://finnhub.io/api/v1/stock/recommendation?symbol=' + companyCode + '&token=c08rrp748v6oofbnp750')
+    rawData = response.json()
+    data = pd.DataFrame(rawData)
+    print(data.head())
+
+    return data
+
+    #data returned in DF object with buy, hold, sell, strong buy and strong sell columns. rows are dates on the first of each month.
+
+def getShortInterest(companyCode):
+    import requests
+    currentDate = str(datetime.datetime.now())[:10]
+    lastYear = int(currentDate[:4]) - 1
+    lastYearDate = str(lastYear) + currentDate[4:]
+    response = requests.get('https://finnhub.io/api/v1/stock/short-interest?symbol=' + companyCode + '&from='+ lastYearDate +'&to=' + currentDate + '&token=c08rrp748v6oofbnp750')
+
+    df = pd.DataFrame(response.json()['data'])
+
+    #df with date (yyyy-mm-dd) and # of uncovered shorted shares columns
+
+    return df
+
 
 companyCode = input("Enter company's stock market code: ")
 companyCode = companyCode.upper()
@@ -410,13 +445,19 @@ industryData = getIndustryData(companyCode)
 # freeCashFlows = getCashFlows(companyCode)
 # evalCashFlows(freeCashFlows)
 
-historicalData = getHistoricalData(companyCode)
-print()
-shortTermMomentum(historicalData)
-print()
-longTermMomentum(historicalData)
-print()
+# historicalData = getHistoricalData(companyCode)
+# print()
+# shortTermMomentum(historicalData)
+# print()
+# longTermMomentum(historicalData)
+# print()
 
+newsData = getNewsSentiment(companyCode)
+# evalNewsSentiment(newsData)
+wallStreetRecs = getWallStreetRecs(companyCode)
+# evalWallStreetRecs(wallStreetRecs)
+getShortInterest(companyCode)
 
+print()
 print("Short term investment score: " + str(shortScore))
 print("Long term investment score: " + str(longScore))
