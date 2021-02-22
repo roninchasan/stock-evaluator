@@ -16,8 +16,12 @@
     <div>
   <center>
       <label for="ticker">What stock would you like to evaluate?</label><br>
-      <input type="text" id="ticker" name="ticker"><br>
-      <button onclick="getData()">EVALUATE</button>
+      <form method="POST">
+        <input type="text" id="ticker" name="ticker"><br>
+        <!-- <button onclick="getData()">EVALUATE</button> -->
+        <input type="submit">
+      </form>
+      
   </center>
   </div>
   <script>

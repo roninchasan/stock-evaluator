@@ -17,18 +17,113 @@ import requests
 import io
 import time
 import datetime
+
+global companyCode
 # from yahoo_finance import Share
+
+
+
+def getHistoricalData(companyCode):
+    url = "https://alpha-vantage.p.rapidapi.com/query"
+
+    querystring = {"function":"TIME_SERIES_WEEKLY","symbol":companyCode,"datatype":"csv"}
+
+    headers = {
+        'x-rapidapi-key': "5a71a248c1mshec5ac249ab63653p1e7a54jsnf4f122a5edee",
+        'x-rapidapi-host': "alpha-vantage.p.rapidapi.com"
+        }
+
+    response = requests.request("GET", url, headers=headers, params=querystring)
+
+    rawData = io.StringIO(response.text)
+    data = pd.read_csv(rawData)
+
+    marketCap = data['close'] * data['volume']
+
+    data.insert(6,'MarketCap', marketCap)
+
+
+    return data
+
+def shortTermMomentum(df):
+
+    dfSelect = df.iloc[0:12]
+    xtrain = np.array([range(12,0,-1)], dtype=float).reshape(-1,1)
+    ytrain = np.array(dfSelect['close'],dtype=float)
+
+    linModel = LinearRegression().fit(xtrain, ytrain)
+    print("Linear regression slope for time vs. price over last 3 months:", (linModel.coef_[0]))
+    print("Linear regression intercept for time vs. price over last 3 months:", linModel.intercept_)
+    print("Linear regression score for time vs. price over last 3 months:", linModel.score(xtrain, ytrain))
+
+    polyX = PolynomialFeatures(interaction_only=True).fit_transform(xtrain).astype(int)
+    polyY = ytrain.astype(int)
+    polyModel = Perceptron(fit_intercept=False, max_iter=1000, tol=None,shuffle=False).fit(polyX, polyY)
+    # print("Polynomial regression slope for time vs. price over last 3 months:", polyModel.coef_)
+    print("Polynomial regression score for time vs. price over last 3 months:", polyModel.score(polyX, polyY))
+
+    logModel = LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=10000).fit(polyX, polyY)
+    # print("Logistic regression slope for time vs. price over last 3 months:", logModel.coef_[0][0])
+    print("Logistic regression score for time vs. price over last 3 months:", logModel.score(polyX, polyY))
+
+def longTermMomentum(df):
+
+    dfSelect = df.iloc[0:52]
+    xtrain = np.array([range(52,0,-1)], dtype=float).reshape(-1,1)
+    ytrain = np.array(dfSelect['close'],dtype=float)
+
+    linModel = LinearRegression().fit(xtrain, ytrain)
+    print("Linear regression slope for time vs. price over last 12 months:", (linModel.coef_[0]))
+    print("Linear regression intercept for time vs. price over last 12 months:", linModel.intercept_)
+    print("Linear regression score for time vs. price over last 12 months:", linModel.score(xtrain, ytrain))
+
+    polyX = PolynomialFeatures(interaction_only=True).fit_transform(xtrain).astype(int)
+    polyY = ytrain.astype(int)
+    polyModel = Perceptron(fit_intercept=False, max_iter=1000, tol=None,shuffle=False).fit(polyX, polyY)
+    # print("Polynomial regression slope for time vs. price over last 12 months:", polyModel.coef_)
+    print("Polynomial regression score for time vs. price over last 12 months:", polyModel.score(polyX, polyY))
+
+    logModel = LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=10000).fit(polyX, polyY)
+    # print("Logistic regression slope for time vs. price last 12 months:", model.coef_[0][0])
+    print("Logistic regression score for time vs. price last 12 months:", logModel.score(polyX, polyY))
+
+    return (linModel.coef_[0] * linModel.score(xtrain, ytrain))
 
 app = Flask(__name__)
 
-@app.route('/')
+@app.route('/', methods=['GET'])
 def index():
     return render_template('index.html')
+
+
+@app.route('/', methods=['POST'])
+def my_form_post():
+    global companyCode
+
+    text = request.form['ticker']
+    processed_text = text.upper()
+    companyCode = processed_text
+
+
+    historicalData = getHistoricalData(companyCode)
+    tempScore = longTermMomentum(historicalData)
+
+    return {"stock": "this is our post route, we will use this to connect our front end to our backend, but I don't feel like tinckering too much rn.", "temp long score": tempScore}
 
 @app.route('/data', methods=['POST'])
 def evaluate():
     if request.method == 'POST':
-        return {"stock": "this is our post route, we will use this to connect our front end to our backend, but I don't feel like tinckering too much rn."}
+
+        global companyCode
+
+        historicalData = getHistoricalData(companyCode)
+        tempScore = longTermMomentum(historicalData)
+
+        return {"stock": "this is our post route, we will use this to connect our front end to our backend, but I don't feel like tinckering too much rn.", "temp long score": tempScore}
+
+
+
+
 
 if __name__ == "__main__":
     app.run(debug=True)
@@ -349,69 +444,6 @@ def compareIndustryData(finData, industry):
 
 
 
-def getHistoricalData(companyCode):
-    url = "https://alpha-vantage.p.rapidapi.com/query"
-
-    querystring = {"function":"TIME_SERIES_WEEKLY","symbol":companyCode,"datatype":"csv"}
-
-    headers = {
-        'x-rapidapi-key': "5a71a248c1mshec5ac249ab63653p1e7a54jsnf4f122a5edee",
-        'x-rapidapi-host': "alpha-vantage.p.rapidapi.com"
-        }
-
-    response = requests.request("GET", url, headers=headers, params=querystring)
-
-    rawData = io.StringIO(response.text)
-    data = pd.read_csv(rawData)
-
-    marketCap = data['close'] * data['volume']
-
-    data.insert(6,'MarketCap', marketCap)
-
-
-    return data
-
-def shortTermMomentum(df):
-
-    dfSelect = df.iloc[0:12]
-    xtrain = np.array([range(12,0,-1)], dtype=float).reshape(-1,1)
-    ytrain = np.array(dfSelect['close'],dtype=float)
-
-    linModel = LinearRegression().fit(xtrain, ytrain)
-    print("Linear regression slope for time vs. price over last 3 months:", (linModel.coef_[0]))
-    print("Linear regression intercept for time vs. price over last 3 months:", linModel.intercept_)
-    print("Linear regression score for time vs. price over last 3 months:", linModel.score(xtrain, ytrain))
-
-    polyX = PolynomialFeatures(interaction_only=True).fit_transform(xtrain).astype(int)
-    polyY = ytrain.astype(int)
-    polyModel = Perceptron(fit_intercept=False, max_iter=1000, tol=None,shuffle=False).fit(polyX, polyY)
-    # print("Polynomial regression slope for time vs. price over last 3 months:", polyModel.coef_)
-    print("Polynomial regression score for time vs. price over last 3 months:", polyModel.score(polyX, polyY))
-
-    logModel = LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=10000).fit(polyX, polyY)
-    # print("Logistic regression slope for time vs. price over last 3 months:", logModel.coef_[0][0])
-    print("Logistic regression score for time vs. price over last 3 months:", logModel.score(polyX, polyY))
-
-def longTermMomentum(df):
-
-    dfSelect = df.iloc[0:52]
-    xtrain = np.array([range(52,0,-1)], dtype=float).reshape(-1,1)
-    ytrain = np.array(dfSelect['close'],dtype=float)
-
-    linModel = LinearRegression().fit(xtrain, ytrain)
-    print("Linear regression slope for time vs. price over last 12 months:", (linModel.coef_[0]))
-    print("Linear regression intercept for time vs. price over last 12 months:", linModel.intercept_)
-    print("Linear regression score for time vs. price over last 12 months:", linModel.score(xtrain, ytrain))
-
-    polyX = PolynomialFeatures(interaction_only=True).fit_transform(xtrain).astype(int)
-    polyY = ytrain.astype(int)
-    polyModel = Perceptron(fit_intercept=False, max_iter=1000, tol=None,shuffle=False).fit(polyX, polyY)
-    # print("Polynomial regression slope for time vs. price over last 12 months:", polyModel.coef_)
-    print("Polynomial regression score for time vs. price over last 12 months:", polyModel.score(polyX, polyY))
-
-    logModel = LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=10000).fit(polyX, polyY)
-    # print("Logistic regression slope for time vs. price last 12 months:", model.coef_[0][0])
-    print("Logistic regression score for time vs. price last 12 months:", logModel.score(polyX, polyY))
 
 def getNewsSentiment(companyCode):
     response = requests.get('https://finnhub.io/api/v1/news-sentiment?symbol=' + companyCode + '&token=c08rrp748v6oofbnp750')
@@ -485,11 +517,11 @@ industryData = getIndustryData(companyCode)
 # freeCashFlows = getCashFlows(companyCode)
 # evalCashFlows(freeCashFlows)
 
-# historicalData = getHistoricalData(companyCode)
+historicalData = getHistoricalData(companyCode)
 # print()
 # shortTermMomentum(historicalData)
 # print()
-# longTermMomentum(historicalData)
+longTermMomentum(historicalData)
 # print()
 
 newsData = getNewsSentiment(companyCode)
