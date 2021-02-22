@@ -449,6 +449,29 @@ def getShortInterest(companyCode):
 
     return df
 
+def evalShortInterest(shortData):
+
+    dfSelect = shortData.iloc[0:12]
+    xtrain = np.array([range(12,0,-1)], dtype=float).reshape(-1,1)
+    ytrain = np.array(dfSelect['close'],dtype=float)
+
+    linModel = LinearRegression().fit(xtrain, ytrain)
+    print("Linear regression slope for time vs. short interest over last 3 months:", (linModel.coef_[0]))
+    print("Linear regression intercept for time vs. short interest over last 3 months:", linModel.intercept_)
+    print("Linear regression score for time vs. short interest over last 3 months:", linModel.score(xtrain, ytrain))
+
+    polyX = PolynomialFeatures(interaction_only=True).fit_transform(xtrain).astype(int)
+    polyY = ytrain.astype(int)
+    polyModel = Perceptron(fit_intercept=False, max_iter=1000, tol=None,shuffle=False).fit(polyX, polyY)
+    # print("Polynomial regression slope for time vs. price over last 3 months:", polyModel.coef_)
+    print("Polynomial regression score for time vs. short interest over last 3 months:", polyModel.score(polyX, polyY))
+
+    logModel = LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=10000).fit(polyX, polyY)
+    # print("Logistic regression slope for time vs. price over last 3 months:", logModel.coef_[0][0])
+    print("Logistic regression score for time vs. short interest over last 3 months:", logModel.score(polyX, polyY))
+
+
+
 
 companyCode = input("Enter company's stock market code: ")
 companyCode = companyCode.upper()
@@ -473,7 +496,8 @@ newsData = getNewsSentiment(companyCode)
 # evalNewsSentiment(newsData)
 wallStreetRecs = getWallStreetRecs(companyCode)
 # evalWallStreetRecs(wallStreetRecs)
-getShortInterest(companyCode)
+shorts = getShortInterest(companyCode)
+evalShortInterest(shorts)
 
 print()
 print("Short term investment score: " + str(shortScore))
