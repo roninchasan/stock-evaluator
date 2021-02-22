@@ -1,0 +1,41 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+
+  <title>Stock Evaluator</title>
+  <meta name="description" content="The HTML5 Herald">
+  <meta name="author" content="SitePoint">
+
+  <link rel="stylesheet" href="css/styles.css">
+
+</head>
+
+<body>
+    <div>
+  <center>
+      <label for="ticker">What stock would you like to evaluate?</label><br>
+      <input type="text" id="ticker" name="ticker"><br>
+      <button onclick="getData()">EVALUATE</button>
+  </center>
+  </div>
+  <script>
+
+  function getData() {
+    var xhttp = new XMLHttpRequest();
+	  xhttp.onreadystatechange = () => {
+	    if (this.readyState == 4 && this.status == 200) {
+		    data = JSON.parse(this.responseText);
+        console.log(data);
+     	}
+    }
+    
+    xhttp.open('POST', "http://localhost:5000/data" , true);
+    xhttp.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+ 	  xhttp.send();
+  }
+  
+  </script>
+</body>
+</html>

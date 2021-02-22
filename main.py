@@ -1,3 +1,5 @@
+from flask import Flask, render_template, request
+
 import numpy as np
 import pandas as pd
 import json
@@ -16,6 +18,21 @@ import io
 import time
 import datetime
 # from yahoo_finance import Share
+
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/data', methods=['POST'])
+def evaluate():
+    if request.method == 'POST':
+        return {"stock": "this is our post route, we will use this to connect our front end to our backend, but I don't feel like tinckering too much rn."}
+
+if __name__ == "__main__":
+    app.run(debug=True)
+
 
 betweenTagsRegEx = '(?<=>)(.*\n?)(?=<)'
 shortScore = 50
