@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect, url_for
 
 import numpy as np
 import pandas as pd
@@ -21,14 +21,13 @@ import datetime
 
 app = Flask(__name__)
 
-@app.route('/')
+@app.route('/', methods=['POST', 'GET'])
 def index():
-    return render_template('index.html')
-
-@app.route('/data', methods=['POST'])
-def evaluate():
     if request.method == 'POST':
-        return {"stock": "this is our post route, we will use this to connect our front end to our backend, but I don't feel like tinckering too much rn."}
+        ticker = request.form['ticker']
+        return render_template('index.html', ticker = ticker)
+    else:
+        return render_template('index.html')    
 
 if __name__ == "__main__":
     app.run(debug=True)
