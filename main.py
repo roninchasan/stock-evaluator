@@ -30,8 +30,8 @@ def evaluate():
     if request.method == 'POST':
         return {"stock": "this is our post route, we will use this to connect our front end to our backend, but I don't feel like tinckering too much rn."}
 
-if __name__ == "__main__":
-    app.run(debug=True)
+# if __name__ == "__main__":
+#     app.run(debug=True)
 
 
 betweenTagsRegEx = '(?<=>)(.*\n?)(?=<)'
@@ -41,7 +41,6 @@ comments = []
 sector_data_link = "https://eresearch.fidelity.com/eresearch/markets_sectors/sectors/sectors_in_market.jhtml?tab=learn&sector=10"
 
 def livePrice(companyCode):
-
     url = buildLivePriceLink(companyCode)
     response = requests.get(url)    
     soup = BeautifulSoup(response.text, "lxml")
@@ -55,7 +54,6 @@ def livePrice(companyCode):
     return price
 
 def getName(companyCode):
-
     url = buildLivePriceLink(companyCode)
     response = requests.get(url)    
     soup = BeautifulSoup(response.text, "lxml")
@@ -238,22 +236,41 @@ def getCashFlows(companyCode):
             fcfstring = re.search(betweenTagsRegEx, str(fcf)).group(0)
             choppedString = fcfstring.replace(",", "")
             if (choppedString!="Free Cash Flow"):
-                freeCashFlows.append(choppedString)
+                freeCashFlows.append(int(choppedString))
         
     except:
         freeCashFlows = "FCFs unavailable."
 
+    freeCashFlows.reverse()
+
     return freeCashFlows
 
 def evalCashFlows(freeCashFlows):
+    global longScore
+    global shortScore
+
     # print(freeCashFlows)
     xtrain = np.array([range(1,len(freeCashFlows)+1)], dtype=float).reshape(-1,1)
     ytrain = np.array(freeCashFlows,dtype=float)
     model = LinearRegression().fit(xtrain, ytrain)
     score = model.score(xtrain, ytrain)
-    print("FCF r:" + str(score))
-    slope = -1 * model.coef_[0]
-    print("FCF slope: " + str(slope))
+    # print("FCF r:" + str(score))
+    slope = model.coef_[0]
+    # print("FCF slope: " + str(slope))
+
+    rateOfChange = 0.0
+    curr = 0.0
+
+    for i in range(1, len(freeCashFlows)):
+        curr = freeCashFlows[i]/freeCashFlows[i-1]
+        rateOfChange += curr
+
+    rateOfChange = rateOfChange/(len(freeCashFlows)-1)
+
+    # print((rateOfChange * score))
+
+    longScore += 5*(rateOfChange * score)
+    shortScore += 2*(rateOfChange * score)
 
 def evalFinData(finData):
     global longScore
@@ -301,10 +318,6 @@ def evalFinData(finData):
         longScore -= .5*finData['priceBookRatio']
         shortScore -= .3*finData['priceBookRatio']    
 
-
-
-
-
 def compareIndustryData(finData, industry):
     # df = pd.read_html("http://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/pedata.html", header = 0, index_col="Industry Name")[0]
 
@@ -347,8 +360,6 @@ def compareIndustryData(finData, industry):
         longScore += 10
         shortScore += 11
 
-
-
 def getHistoricalData(companyCode):
     url = "https://alpha-vantage.p.rapidapi.com/query"
 
@@ -372,46 +383,68 @@ def getHistoricalData(companyCode):
     return data
 
 def shortTermMomentum(df):
+    global shortScore
 
     dfSelect = df.iloc[0:12]
     xtrain = np.array([range(12,0,-1)], dtype=float).reshape(-1,1)
     ytrain = np.array(dfSelect['close'],dtype=float)
 
     linModel = LinearRegression().fit(xtrain, ytrain)
-    print("Linear regression slope for time vs. price over last 3 months:", (linModel.coef_[0]))
-    print("Linear regression intercept for time vs. price over last 3 months:", linModel.intercept_)
-    print("Linear regression score for time vs. price over last 3 months:", linModel.score(xtrain, ytrain))
+    # print("Linear regression slope for time vs. price over last 3 months:", (linModel.coef_[0]))
+    # print("Linear regression intercept for time vs. price over last 3 months:", linModel.intercept_)
+    # print("Linear regression score for time vs. price over last 3 months:", linModel.score(xtrain, ytrain))
 
     polyX = PolynomialFeatures(interaction_only=True).fit_transform(xtrain).astype(int)
     polyY = ytrain.astype(int)
     polyModel = Perceptron(fit_intercept=False, max_iter=1000, tol=None,shuffle=False).fit(polyX, polyY)
     # print("Polynomial regression slope for time vs. price over last 3 months:", polyModel.coef_)
-    print("Polynomial regression score for time vs. price over last 3 months:", polyModel.score(polyX, polyY))
+    # print("Polynomial regression score for time vs. price over last 3 months:", polyModel.score(polyX, polyY))
 
     logModel = LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=10000).fit(polyX, polyY)
     # print("Logistic regression slope for time vs. price over last 3 months:", logModel.coef_[0][0])
-    print("Logistic regression score for time vs. price over last 3 months:", logModel.score(polyX, polyY))
+    # print("Logistic regression score for time vs. price over last 3 months:", logModel.score(polyX, polyY))
+
+    scores = {'lin':linModel.score(xtrain, ytrain),'poly':polyModel.score(polyX, polyY),'log':logModel.score(polyX, polyY)}
+    maxScore = max(scores, key=scores.get)
+
+    if maxScore == 'lin':
+        shortScore += scores['lin']*(max(linModel.coef_[0],10))
+    elif maxScore == 'poly':
+        shortScore += scores['poly']*8
+    elif maxScore == 'log':
+        shortScore += scores['log']*2
 
 def longTermMomentum(df):
+    global longScore
 
     dfSelect = df.iloc[0:52]
     xtrain = np.array([range(52,0,-1)], dtype=float).reshape(-1,1)
     ytrain = np.array(dfSelect['close'],dtype=float)
 
     linModel = LinearRegression().fit(xtrain, ytrain)
-    print("Linear regression slope for time vs. price over last 12 months:", (linModel.coef_[0]))
-    print("Linear regression intercept for time vs. price over last 12 months:", linModel.intercept_)
-    print("Linear regression score for time vs. price over last 12 months:", linModel.score(xtrain, ytrain))
+    # print("Linear regression slope for time vs. price over last 12 months:", (linModel.coef_[0]))
+    # print("Linear regression intercept for time vs. price over last 12 months:", linModel.intercept_)
+    # print("Linear regression score for time vs. price over last 12 months:", linModel.score(xtrain, ytrain))
 
     polyX = PolynomialFeatures(interaction_only=True).fit_transform(xtrain).astype(int)
     polyY = ytrain.astype(int)
     polyModel = Perceptron(fit_intercept=False, max_iter=1000, tol=None,shuffle=False).fit(polyX, polyY)
     # print("Polynomial regression slope for time vs. price over last 12 months:", polyModel.coef_)
-    print("Polynomial regression score for time vs. price over last 12 months:", polyModel.score(polyX, polyY))
+    # print("Polynomial regression score for time vs. price over last 12 months:", polyModel.score(polyX, polyY))
 
     logModel = LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=10000).fit(polyX, polyY)
     # print("Logistic regression slope for time vs. price last 12 months:", model.coef_[0][0])
-    print("Logistic regression score for time vs. price last 12 months:", logModel.score(polyX, polyY))
+    # print("Logistic regression score for time vs. price last 12 months:", logModel.score(polyX, polyY))
+
+    scores = {'lin':linModel.score(xtrain, ytrain),'poly':polyModel.score(polyX, polyY),'log':logModel.score(polyX, polyY)}
+    maxScore = max(scores, key=scores.get)
+
+    if maxScore == 'lin':
+        longScore += scores['lin']*(max(linModel.coef_[0],10))
+    elif maxScore == 'poly':
+        longScore += scores['poly']*7
+    elif maxScore == 'log':
+        longScore += scores['log']*3
 
 def getNewsSentiment(companyCode):
     response = requests.get('https://finnhub.io/api/v1/news-sentiment?symbol=' + companyCode + '&token=c08rrp748v6oofbnp750')
@@ -426,15 +459,44 @@ def getNewsSentiment(companyCode):
     # 'sentiment': {'bearishPercent': 0, 'bullishPercent': 1}, 'symbol': 'NIO'}
     # access by data['buzz']['weeklyAverage']
 
+def evalNewsSentiment(newsData):
+    global longScore
+    global shortScore
+    
+    val = 0
+
+    shortScore += 5*newsData['buzz']['buzz']
+    val += newsData['sentiment']['bullishPercent'] - newsData['sentiment']['bearishPercent']
+    val += newsData['companyNewsScore'] + newsData['sectorAverageNewsScore']
+
+    shortScore += 4*val
+    longScore += 2*val
+
 def getWallStreetRecs(companyCode):
     response = requests.get('https://finnhub.io/api/v1/stock/recommendation?symbol=' + companyCode + '&token=c08rrp748v6oofbnp750')
     rawData = response.json()
     data = pd.DataFrame(rawData)
-    print(data.head())
 
     return data
 
     #data returned in DF object with buy, hold, sell, strong buy and strong sell columns. rows are dates on the first of each month.
+
+def evalWallStreetRecs(data):
+    global longScore
+    global shortScore
+    
+    val = 0
+    numRaters = data.at[0, 'strongSell']+data.at[0, 'sell']+data.at[0, 'buy']+data.at[0, 'strongBuy']
+
+    val += (data.at[0, 'strongBuy']/numRaters)
+    val += (data.at[0, 'buy']/numRaters)
+    val -= (data.at[0, 'sell']/numRaters)
+    val -= (data.at[0, 'strongSell'] /numRaters)
+
+    # print(val)
+
+    longScore += 10 * val
+    shortScore += 13 * val
 
 def getShortInterest(companyCode):
     import requests
@@ -471,33 +533,32 @@ def evalShortInterest(shortData):
     print("Logistic regression score for time vs. short interest over last 3 months:", logModel.score(polyX, polyY))
 
 
-
-
 companyCode = input("Enter company's stock market code: ")
 companyCode = companyCode.upper()
 print("The current price of " + str(getName(companyCode)) + " is: $"+str(livePrice(companyCode))+" per share.")
-finData = getFinData(companyCode)
+# finData = getFinData(companyCode)
 industryData = getIndustryData(companyCode)
 
 # industry = str(input("Enter company's industry from http://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/pedata.html : "))
 # evalFinData(finData)
 # compareIndustryData(finData, industryData)
-# freeCashFlows = getCashFlows(companyCode)
-# evalCashFlows(freeCashFlows)
+freeCashFlows = getCashFlows(companyCode)
+if (freeCashFlows != "FCFs unavailable."):
+    evalCashFlows(freeCashFlows)
 
-# historicalData = getHistoricalData(companyCode)
+historicalData = getHistoricalData(companyCode)
 # print()
-# shortTermMomentum(historicalData)
+shortTermMomentum(historicalData)
 # print()
-# longTermMomentum(historicalData)
+longTermMomentum(historicalData)
 # print()
 
 newsData = getNewsSentiment(companyCode)
-# evalNewsSentiment(newsData)
+evalNewsSentiment(newsData)
 wallStreetRecs = getWallStreetRecs(companyCode)
-# evalWallStreetRecs(wallStreetRecs)
-shorts = getShortInterest(companyCode)
-evalShortInterest(shorts)
+evalWallStreetRecs(wallStreetRecs)
+# shorts = getShortInterest(companyCode)
+# evalShortInterest(shorts)
 
 print()
 print("Short term investment score: " + str(shortScore))
