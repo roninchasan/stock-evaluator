@@ -15,26 +15,30 @@
 <body>
     <div>
   <center>
+    <h1>{{ ticker }}</h1>
+    <form action="/" method="POST">
       <label for="ticker">What stock would you like to evaluate?</label><br>
       <input type="text" id="ticker" name="ticker"><br>
-      <button onclick="getData()">EVALUATE</button>
+      <!-- <button onclick="getData()">EVALUATE</button> -->
+      <input type="submit" value="Submit">
+    </form>
   </center>
   </div>
   <script>
 
-  function getData() {
-    var xhttp = new XMLHttpRequest();
-	  xhttp.onreadystatechange = function() {
-	    if (this.readyState == 4 && this.status == 200) {
-		    var data = JSON.parse(this.responseText);
-        console.log(data);
-     	}
-    }
+  // function getData() {
+  //   var xhttp = new XMLHttpRequest();
+	//   xhttp.onreadystatechange = function() {
+	//     if (this.readyState == 4 && this.status == 200) {
+	// 	    var data = JSON.parse(this.responseText);
+  //       console.log(data);
+  //    	}
+  //   }
     
-    xhttp.open('POST', "http://localhost:5000/data" , true);
-    xhttp.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
- 	  xhttp.send();
-  }
+  //   xhttp.open('POST', "http://localhost:5000/data" , true);
+  //   xhttp.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+ 	//   xhttp.send(document.getElementById("ticker").value);
+  // }
   
   </script>
 </body>
