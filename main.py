@@ -1,8 +1,9 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import *
 
 import numpy as np
 import pandas as pd
 import json
+import math
 
 from matplotlib import pyplot
 from sklearn.linear_model import LinearRegression
@@ -19,18 +20,7 @@ import time
 import datetime
 # from yahoo_finance import Share
 
-app = Flask(__name__)
 
-@app.route('/', methods=['POST', 'GET'])
-def index():
-    if request.method == 'POST':
-        ticker = request.form['ticker']
-        return render_template('index.html', ticker = ticker)
-    else:
-        return render_template('index.html')    
-
-# if __name__ == "__main__":
-#     app.run(debug=True)
 
 
 betweenTagsRegEx = '(?<=>)(.*\n?)(?=<)'
@@ -228,19 +218,22 @@ def getCashFlows(companyCode):
 
     try:
         # price = soup.find("div",{"class": "My(6px) Pos(r) smartphone_Mt(6px)"}).find("span").text
-        fcfsRaw = soup.find_all("span")[-21:-16]
+        fcfsRaw = soup.find_all("span")[-26:-22]
         freeCashFlows = []
+        # print(fcfsRaw)
 
         for fcf in fcfsRaw:
             fcfstring = re.search(betweenTagsRegEx, str(fcf)).group(0)
             choppedString = fcfstring.replace(",", "")
+            # print(choppedString)
             if (choppedString!="Free Cash Flow"):
                 freeCashFlows.append(int(choppedString))
+        freeCashFlows.reverse()
+
         
     except:
         freeCashFlows = "FCFs unavailable."
 
-    freeCashFlows.reverse()
 
     return freeCashFlows
 
@@ -295,22 +288,24 @@ def evalFinData(finData):
         shortScore -= 2
 
     
-    if ((finData['priceBookRatio'] !='') and (finData['priceBookRatio'] < 1)):
+    if ((finData['priceBookRatio'] !='')):   # and (finData['priceBookRatio'] < 1)):
         #stock price below book value - undervalued - good long term investment
-        longScore += 8/finData['priceBookRatio']
-        shortScore += 6/finData['priceBookRatio']
+        # longScore += 8/finData['priceBookRatio'] 
+        longScore += -5 * math.log(finData['priceBookRatio'], 2) 
+        # shortScore += 6/finData['priceBookRatio']
+        shortScore += -3 * math.log(finData['priceBookRatio'], 2) 
 
-        if (finData['priceBookRatio'] < .6):
-            #stock price far below book value - very undervalued - great long term investment
-            true = True
+        # if (finData['priceBookRatio'] < .6):
+        #     #stock price far below book value - very undervalued - great long term investment
+        #     true = True
 
-        if (finData['priceBookRatio'] < .75):
-            #stock price below book value - undervalued - good long term investment
-            true = True
+        # elif (finData['priceBookRatio'] < .75):
+        #     #stock price below book value - undervalued - good long term investment
+        #     true = True
 
-        if (finData['priceBookRatio'] < .9):
-            #stock price slightly below book value - slightly undervalued - ok long term investment
-            true = True
+        # elif (finData['priceBookRatio'] < .9):
+        #     #stock price slightly below book value - slightly undervalued - ok long term investment
+        #     true = True
 
     elif (finData['priceBookRatio'] !=''):
         #stock price is inflated/overvalued - not great long term investment 
@@ -377,7 +372,6 @@ def getHistoricalData(companyCode):
     marketCap = data['close'] * data['volume']
 
     data.insert(6,'MarketCap', marketCap)
-
 
     return data
 
@@ -531,34 +525,75 @@ def evalShortInterest(shortData):
     # print("Logistic regression slope for time vs. price over last 3 months:", logModel.coef_[0][0])
     print("Logistic regression score for time vs. short interest over last 3 months:", logModel.score(polyX, polyY))
 
+def evaluate(companyCode):
+    global shortScore
+    shortScore = 50
+    global longScore
+    longScore = 50
+    # companyCode = input("Enter company's stock market code: ")
+    companyCode = companyCode.upper()
+    print("The current price of " + str(getName(companyCode)) + " is: $"+str(livePrice(companyCode))+" per share.")
+    # finData = getFinData(companyCode)
+    industryData = getIndustryData(companyCode)
 
-companyCode = input("Enter company's stock market code: ")
-companyCode = companyCode.upper()
-print("The current price of " + str(getName(companyCode)) + " is: $"+str(livePrice(companyCode))+" per share.")
-# finData = getFinData(companyCode)
-industryData = getIndustryData(companyCode)
+    # industry = str(input("Enter company's industry from http://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/pedata.html : "))
+    # evalFinData(finData)
+    # compareIndustryData(finData, industryData)
+    freeCashFlows = getCashFlows(companyCode)
+    if (freeCashFlows != "FCFs unavailable."):
+        evalCashFlows(freeCashFlows)
 
-# industry = str(input("Enter company's industry from http://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/pedata.html : "))
-# evalFinData(finData)
-# compareIndustryData(finData, industryData)
-freeCashFlows = getCashFlows(companyCode)
-if (freeCashFlows != "FCFs unavailable."):
-    evalCashFlows(freeCashFlows)
+    historicalData = getHistoricalData(companyCode)
+    # print()
+    shortTermMomentum(historicalData)
+    # print()
+    longTermMomentum(historicalData)
+    # print()
 
-historicalData = getHistoricalData(companyCode)
+    newsData = getNewsSentiment(companyCode)
+    evalNewsSentiment(newsData)
+    wallStreetRecs = getWallStreetRecs(companyCode)
+    evalWallStreetRecs(wallStreetRecs)
+    # shorts = getShortInterest(companyCode)
+    # evalShortInterest(shorts)
+    return {"short": shortScore, "long":longScore, "data":historicalData}
+
 # print()
-shortTermMomentum(historicalData)
-# print()
-longTermMomentum(historicalData)
-# print()
+# print("Short term investment score: " + str(shortScore))
+# print("Long term investment score: " + str(longScore))
 
-newsData = getNewsSentiment(companyCode)
-evalNewsSentiment(newsData)
-wallStreetRecs = getWallStreetRecs(companyCode)
-evalWallStreetRecs(wallStreetRecs)
-# shorts = getShortInterest(companyCode)
-# evalShortInterest(shorts)
+scores = {}
 
-print()
-print("Short term investment score: " + str(shortScore))
-print("Long term investment score: " + str(longScore))
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return render_template('index.html')    
+
+@app.route('/evaluated.html')
+def evaluated():
+    global scores
+    # ticker = request.form['ticker']
+    ticker = request.args.get('ticker')
+    scores = evaluate(ticker)
+    ticker = ticker.upper()
+    print(scores)
+    return render_template('evaluated.html', ticker = ticker, company = getName(ticker), shortScore = scores['short'], longScore = scores['long'], price = livePrice(ticker))
+
+
+@app.route('/stockdata')
+def getStockData():
+    global scores
+    df = scores['data']
+    return df.to_csv()
+
+# @app.route('/css/<path:path>')
+# def send_css(path):
+#     return send_from_directory('css', path)
+
+# @app.route('/css/styles.css')
+# def send_css():
+#     return app.send_static_file('/css/styles.css')
+
+if __name__ == "__main__":
+    app.run(debug=True)

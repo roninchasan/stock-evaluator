@@ -1,0 +1,422 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+
+  <title>Stock Evaluator</title>
+  <meta name="description" content="The HTML5 Herald">
+  <meta name="author" content="SitePoint">
+  <style>
+    body{
+      font-family:Verdana, Tahoma, Arial, sans-serif
+    }
+
+    #main{
+      width: 80%;
+      margin: auto;
+      text-align: center;
+    }
+
+    .gridlines{
+        color: darkgrey;
+        opacity: 0.5;
+      }
+
+    button:focus {outline:0;}
+
+    #graphButtons{
+      margin-bottom: 0;
+      display: flex;
+      justify-content: center;
+    }
+    #graphButtons button{
+      height: 3em;
+      width: 6em;
+      margin:0;
+      cursor: pointer;
+      border: grey solid 1.5px;
+      /* background-color: rgb(238, 238, 238);  */
+    }
+
+    #graphButtons button:active{
+      background-color: darkgrey; 
+    }
+    #graphButtons button :hover{
+      background-color: rgb(187, 174, 255); 
+    }
+
+    #max{
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+      border-top-left-radius: 5px;
+      border-bottom-left-radius: 5px;
+      border-right: none;
+    }
+
+    #year, #sixMo {
+      border-radius: none;
+      border-right: none;
+    }
+
+    #oneMo {
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 0;
+      border-top-right-radius: 5px;
+      border-bottom-right-radius: 5px;
+    }
+
+    .selectedButton{
+      background-color:rgb(51, 51, 51);
+      cursor: default;
+      color: white;
+    }
+
+  </style>
+
+  <link rel="stylesheet" href="static/styles.css">
+  <script src="https://d3js.org/d3.v6.min.js"></script>
+</head>
+
+<body>
+  <div id="main">
+  
+    <h1>Stock Evaluator</h1>
+    <h2>{{company}}</h2>
+    <h3>Current price: ${{ price }}</h3>
+    <h3>Short term investment score: {{ longScore }}</h3>
+    <h3>Long term investment score: {{ shortScore }}</h3>
+    <span id="graphButtons">
+      <button id="max" class="selectedButton">Max</button>
+      <button id="year">1 Year</button>
+      <button id="sixMo">6 Months</button>
+      <button id="oneMo">1 Month</button>
+
+    </span>
+    <svg id="graph" height="500" width="950" style="background: #fff; margin-top:50px" >
+    </svg>
+
+    <form action="/evaluated.html" method="GET">
+      <label for="ticker">What stock would you like to evaluate?</label><br>
+      <input type="text" id="ticker" name="ticker"><br>
+      <input type="submit" value="Submit">
+    </form>
+  </div>
+  <script type = 'text/javascript'>
+    const svg = d3.select('svg#graph');
+    const height = svg.attr("height");
+    const width = svg.attr("width");
+    const margin = {top: 10, right: 10, bottom: 50, left: 80};
+
+    const chartHeight = height - margin.top - margin.bottom;
+    const chartWidth = width - margin.left - margin.right;
+
+    let annotations = svg.append("g").attr("id","annotations");
+
+    let chartArea = svg.append("g")
+      .attr("id","chartArea")
+      .attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+    const createGraph = async () => {
+      var df = await d3.csv("/stockdata");
+
+      var parseDate = d3.timeParse("%Y-%m-%d");
+
+      df.forEach((d) => {
+        d['close'] = Number(d['close'])
+        d['timestamp'] = parseDate(d['timestamp']);
+      });
+
+      let leftAxisG = annotations.append("g")
+                  .attr("class", "y-axis")
+                  .attr("transform",`translate(${margin.left},${margin.top})`)
+                  // .call(leftAxis);
+
+      let leftGridlinesG = annotations.append("g")
+                  .attr("class", "gridlines")
+                  .attr("transform",`translate(${margin.left},${margin.top})`)
+
+      let bottomAxisG = annotations.append("g")
+                  .attr("class", "x-axis")
+                  .attr("transform",`translate(${margin.left},${margin.top + chartHeight})`)
+
+      d3.selectAll("#graphButtons button")
+        .on("click", function() {
+          updateGraph(this.id)
+          d3.selectAll("#graphButtons button").attr("class", "")
+          d3.select(this).attr("class","selectedButton")
+        })
+
+      lengths = {"max": df.length, "year":52, "sixMo":26, "oneMo": 4};
+      let mouseGroup = chartArea.append("g").attr("id", "mouseoverContainer");
+      function updateGraph(id){
+        length = lengths[id];
+        
+        var updatedDf = df.filter( d => d[""]<=length);
+
+        let priceExtent = d3.extent(updatedDf, d => d['close']);
+        let priceScale = d3.scaleLinear().domain([.9*priceExtent[0], 1.05*priceExtent[1]]).range([chartHeight, 0]);
+
+        let dateExtent = d3.extent(updatedDf, d => d['timestamp']);
+        let dateScale = d3.scaleTime().domain([dateExtent[0], 1.001*dateExtent[1]]).range([0, chartWidth]);
+
+        bottomAxis = d3.axisBottom(dateScale).tickFormat(d3.timeFormat("%m/%d/%Y"));
+        bottomAxisG.transition().duration(1000).call(bottomAxis)
+
+        leftAxis = d3.axisLeft(priceScale).tickFormat(function(d) { return '$' + d3.format(',.2f')(d) });
+        leftAxisG.transition().duration(1000).call(leftAxis)
+
+        leftGridlines = d3.axisLeft(priceScale)
+                            .tickSize(-chartWidth)
+                            .tickFormat("")
+
+        leftGridlinesG.transition().duration(1000).call(leftGridlines);
+
+        var u = chartArea.selectAll(".line")
+          .data([updatedDf]);
+
+        u
+          .enter()
+          .append("path")
+          .attr("class","line")
+          .lower()
+          .merge(u)
+          .transition()
+          .duration(1000)
+          .attr("d", d3.line()
+            .x( d => dateScale(d['timestamp']))
+            .y( d =>  priceScale(d['close']))
+          )
+          .attr("fill", "none")
+          .attr("stroke", "steelblue")
+          .attr("stroke-width", 1.5)
+          ;
+
+        //Mouseovers
+        mxDate = d3.max(updatedDf, function(d) { return +d['timestamp']; })
+        mnDate = d3.min(updatedDf, function(d) { return +d['timestamp']; })
+
+        let lineWidth = dateScale(mxDate) - dateScale(mnDate)
+        mouseGroup.selectAll("g").remove();
+        boxWidth = (1 / updatedDf.length) * lineWidth;
+        let mouseLine;
+
+        let label = mouseGroup.append("text")
+          .attr("id","label")
+          .attr("visibility", "hidden")
+          .attr("fill", "black")
+          .attr("stroke", "white")
+          .attr("stroke-width", .6)
+          .style("font-weight", "bold")
+          .raise()
+
+        let label2 = mouseGroup.append("text")
+          .attr("id","label2")
+          .attr("visibility", "hidden")
+          .attr("fill", "black")
+          .attr("stroke", "white")
+          .attr("stroke-width", .6)
+          .style("font-weight", "bold")
+          .raise()
+
+        let currentCircle;
+        let pulseCircle;
+        const formatDate = d3.timeFormat("%m/%d/%Y")
+        updatedDf.forEach((d, i) => {
+
+          if (i===0){
+            chartArea.selectAll("circle").transition().duration(200).attr("r", 0).remove();
+
+            currentCircle = chartArea.append("circle")
+              .attr("r", 0)
+              .attr("opacity", 1)
+              .attr("cx", dateScale(d['timestamp']))
+              .attr("cy", priceScale(d['close']))
+              .attr("fill", "steelblue")
+              .transition().delay(800).duration(200)
+              .attr("r", 5)
+              .on("end", pulse)
+
+            function pulse(){
+              pulseCircle = chartArea.append("circle")
+                .attr("r", 5)
+                .attr("opacity", 1)
+                .attr("cx", dateScale(d['timestamp']))
+                .attr("cy", priceScale(d['close']))
+                .attr("fill", "steelblue")
+                .transition().duration(1200)
+                .attr("r", 15)
+                .attr("opacity", 0)
+                .on("end", pulse)
+                .remove()
+              }
+          }
+
+          
+          let mouseG = mouseGroup.append('g')
+            .attr("class", "mouseG")
+            .attr("transform", `translate(${Math.max(0, dateScale(d['timestamp']) - (boxWidth/2))},${0})`)
+            .attr("height", chartHeight)
+            .attr("width", boxWidth)
+
+          if (i === updatedDf.length-1){
+            mouseG.attr("width", boxWidth/2)
+          }
+
+          let mouseRect = mouseG.append("rect")
+            .attr('id', `mousebox${d['']}`)
+            .attr("height", chartHeight)
+            .attr("x", 0)
+            .attr("width", boxWidth)
+            .attr("y", 0)
+            .attr("opacity", "0")
+            .on("mouseover", function(){
+              mouseLine = mouseG.append('rect')
+                .attr("class", "mouseLine")
+                .attr("fill","grey")
+                .attr("stroke","none")
+                .attr("stroke-width",1)
+                .attr("y",0)
+                .attr("height",chartHeight)
+                .attr("x", boxWidth/2)
+                .attr("width", .8)
+                .attr("opacity", 0.8)
+                .lower()
+
+              if (i === updatedDf.length-1){
+                mouseLine.attr("x", 1)
+              }
+
+              label
+                .attr("visibility", "")
+                .attr("x", dateScale(d['timestamp']))
+                .text(`$${d['close'].toFixed(2)}`)
+                .raise()
+
+              label2
+                .attr("visibility", "")
+                .attr("x", dateScale(d['timestamp']))
+                .text(formatDate(d['timestamp']))
+                .raise()
+
+              if (dateScale(d['timestamp'])>(0.8*chartWidth)){
+                label.attr("text-anchor", "end")
+                label2.attr("text-anchor", "end")
+              } else {
+                label.attr("text-anchor", "start")
+                label2.attr("text-anchor", "start")
+              }
+
+              if (priceScale(d['close'])<(0.5*chartHeight)){
+                label.attr("y", chartHeight - 70)
+                label2.attr("y", chartHeight - 50)
+              } else {
+                label.attr("y", 50)
+                label2.attr("y", 70)
+              }
+            })
+            .on("mouseout", function(){
+              mouseLine.remove()
+              label.attr("visibility", "hidden")
+              label2.attr("visibility", "hidden")
+            })
+            .raise()
+
+        });
+
+      // let mouseGroup = chartArea.append("g");
+      // let xMarker = mouseGroup.append("line")
+      //   .attr("id","xMarker")
+      //   .attr("fill","none")
+      //   .attr("stroke","black")
+      //   .attr("stroke-width",1)
+      //   .attr("y1",0)
+      //   .attr("y2",chartHeight)
+      //   .attr("visibility","hidden");
+      
+      // let valueMarker = mouseGroup.append("circle")
+      //   .attr("id","valueMarker")
+      //   .attr("fill","none")
+      //   .attr("stroke","black")
+      //   .attr("stroke-width",2)
+      //   .attr("r",10)
+      //   .attr("visibility","hidden");
+      
+      // let label = mouseGroup.append("text")
+      //   .attr("id","label")
+      //   .attr("visibility","hidden");
+      
+      // // // Instead, we have to resort to a more complicated solution
+      // // // We paint an active region on the chart that is invisible but "catches" the mouse events for us
+      // let activeRegion = mouseGroup.append("rect")
+      //   .attr("id","activeRegion")
+      //   .attr("width",chartWidth)
+      //   .attr("height",chartHeight)
+      //   .attr("fill","none")
+      //   .attr("pointer-events","all");
+      
+      // // In order to make our mouseovers a bit more grounded, let's find the data point that is closest to the mouse location
+      // // We'll need a way to find the closest point to a specific date (from where the mouse is on the X axis)
+      // // Refer to the docs on bisector to see how this works -- for now just know this is a common pattern for finding the closest value in an array
+      // let findDate = d3.bisector( d => d['timestamp'] ).right;
+      
+      // // activeRegion is now the top-most item (even if invisible), so it should always catch the mouse events and never clash
+      // activeRegion.on("mouseover", function() {
+      //   // Show the marker and label when mousing over
+      //   xMarker.attr("visibility","");
+      //   valueMarker.attr("visibility","");
+      //   label.attr("visibility",""); 
+      // });
+      // activeRegion.on("mouseout", function() {
+      //   // Hide them when mousing out of chart
+      //   xMarker.attr("visibility","hidden");
+      //   valueMarker.attr("visibility","hidden");
+      //   label.attr("visibility","hidden"); 
+      // });
+      // activeRegion.on("mousemove", function(evt) {
+      //   // Update the position as you move
+      
+      //   // Get mouse location
+      //   let location = d3.pointer(evt);
+      //   let x = location[0];
+      //   // Use "invert" on a scale to go from pixels back to data
+      //   let xDate = dateScale.invert(x);
+      //   // We use the bisector to find the index of the element that's closest to our xDate
+      //   let index = findDate(updatedDf, xDate);
+      //   // We can then get d, the data point that's closest
+      //   let d = updatedDf[index];
+
+      //   console.log(d)
+      
+      //   // From there, it's just a matter of updating positions using our scales like we've done for a while now
+      //   let xPos = dateScale(d['timestamp']);
+      //   let yPos = priceScale(d['close']);
+      
+      //   xMarker.attr("x1",xPos).attr("x2",xPos);
+      //   valueMarker.attr("cx",xPos).attr("cy",yPos);
+      
+      //   let txt = `$${d['close']}`
+      
+      //   // We started with the following line, which has lots of overlaps
+      //   // label.attr("x",xPos).attr("y",yPos).text(txt); 
+      
+      //   // Here's a simple way to remove overlaps and deliver a consistent user experience
+      //   label.text(txt); 
+      //   if (xPos < chartWidth / 2.0) { 
+      //     label.attr("x",xPos+4).attr("y",100).attr("text-anchor","start");
+      //   }
+      //   else { 
+      //     label.attr("x",xPos-4).attr("y",chartHeight-100).attr("text-anchor","end"); 
+      //   }
+          
+      // })
+      }
+      updateGraph("max");
+
+    }
+
+    createGraph();
+
+  </script>
+</body>
+</html>
