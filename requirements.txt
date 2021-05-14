@@ -1,0 +1,9 @@
+Flask
+numpy
+pandas
+requests
+bs4
+beautifulsoup4
+lxml
+matplotlib
+sklearn
